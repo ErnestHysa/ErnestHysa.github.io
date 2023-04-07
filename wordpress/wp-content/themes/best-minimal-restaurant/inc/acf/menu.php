@@ -1,0 +1,238 @@
+<?php
+/**
+ * Menu Page Template Custom Fields
+ *
+ * @package Best_Minimal_Restaurant
+ * @author  PriceListo
+ */
+
+if ( function_exists( 'acf_add_local_field_group' ) ) :
+
+	acf_add_local_field_group(
+		array(
+			'key'                   => 'group_5f1a0c2c8ef6b',
+			'title'                 => esc_html__( 'Menu', 'best-minimal-restaurant' ),
+			'fields'                => array(
+				array(
+					'key'               => 'field_menu5f1bdb0567911',
+					'label'             => esc_html__( 'Hide/Show Sections', 'best-minimal-restaurant' ),
+					'name'              => 'menu-visible-sections',
+					'type'              => 'checkbox',
+					'instructions'      => esc_html__( 'Uncheck section(s) to be hided from the page!', 'best-minimal-restaurant' ),
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'choices'           => array(
+						'breadcrumb' => esc_html__( 'Show Breadcrumb Section', 'best-minimal-restaurant' ),
+						'menu'       => esc_html__( 'Show Menu Section', 'best-minimal-restaurant' ),
+					),
+					'allow_custom'      => 0,
+					'default_value'     => array(
+						0 => 'breadcrumb',
+						1 => 'menu',
+					),
+					'layout'            => 'horizontal',
+					'toggle'            => 0,
+					'return_format'     => 'value',
+					'save_custom'       => 0,
+				),
+				array(
+					'key'               => 'field_menu5f1a0c3ec3127',
+					'label'             => esc_html__( 'Breadcrumb Section', 'best-minimal-restaurant' ),
+					'name'              => '',
+					'type'              => 'tab',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_menu5f1bdb0567911',
+								'operator' => '==',
+								'value'    => 'breadcrumb',
+							),
+						),
+					),
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'placement'         => 'top',
+					'endpoint'          => 0,
+				),
+				array(
+					'key'               => 'field_menu5f1a0c59c3128',
+					'label'             => esc_html__( 'Background', 'best-minimal-restaurant' ),
+					'name'              => 'background-breadcrump-menu',
+					'type'              => 'image',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'return_format'     => 'url',
+					'preview_size'      => 'medium',
+					'library'           => 'all',
+					'min_width'         => '',
+					'min_height'        => '',
+					'min_size'          => '',
+					'max_width'         => '',
+					'max_height'        => '',
+					'max_size'          => '',
+					'mime_types'        => '',
+					'default_value'     => urestaurany_get_attachment_id_by_name( 'urest-minimal-menupage-breadcrumb-background' ),
+				),
+				array(
+					'key'               => 'field_menu5f1a0c95c3129',
+					'label'             => esc_html__( 'Heading', 'best-minimal-restaurant' ),
+					'name'              => 'heading-breadcrump-menu',
+					'type'              => 'text',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'default_value'     => esc_html__( 'Our Menu', 'best-minimal-restaurant' ),
+					'placeholder'       => '',
+					'prepend'           => '',
+					'append'            => '',
+					'maxlength'         => '',
+				),
+				array(
+					'key'               => 'field_menu5f1a0cdec312a',
+					'label'             => esc_html__( 'Menu Section', 'best-minimal-restaurant' ),
+					'name'              => '',
+					'type'              => 'tab',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => array(
+						array(
+							array(
+								'field'    => 'field_menu5f1bdb0567911',
+								'operator' => '==',
+								'value'    => 'menu',
+							),
+						),
+					),
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'placement'         => 'top',
+					'endpoint'          => 0,
+				),
+				array(
+					'key'               => 'field_menu5f1a0d7cc312d',
+					'label'             => esc_html__( 'Section Image', 'best-minimal-restaurant' ),
+					'name'              => 'image-menu',
+					'type'              => 'image',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'return_format'     => 'array',
+					'preview_size'      => 'medium',
+					'library'           => 'all',
+					'min_width'         => '',
+					'min_height'        => '',
+					'min_size'          => '',
+					'max_width'         => '',
+					'max_height'        => '',
+					'max_size'          => '',
+					'mime_types'        => '',
+					'default_value'     => urestaurany_get_attachment_id_by_name( 'urest-minimal-menupage-menu-section' ),
+				),
+				array(
+					'key'               => 'field_menu5f1a0cedc312b',
+					'label'             => esc_html__( 'Check Menu Title', 'best-minimal-restaurant' ),
+					'name'              => 'title-menu',
+					'type'              => 'text',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'default_value'     => esc_html__( 'Check our Menu', 'best-minimal-restaurant' ),
+					'placeholder'       => '',
+					'prepend'           => '',
+					'append'            => '',
+					'maxlength'         => '',
+				),
+				array(
+					'key'               => 'field_menu5f1a0d51c312c',
+					'label'             => esc_html__( 'Check Menu Description', 'best-minimal-restaurant' ),
+					'name'              => 'menu-description',
+					'type'              => 'wysiwyg',
+					'instructions'      => '',
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'default_value'     => esc_html__( 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nullaDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nullaDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla', 'best-minimal-restaurant' ),
+					'tabs'              => 'all',
+					'toolbar'           => 'full',
+					'media_upload'      => 0,
+					'delay'             => 0,
+				),
+				array(
+					'key'               => 'field_menu5f1a0dc6c312e',
+					'label'             => esc_html__( 'Best Restaurant Menu Shortcode', 'best-minimal-restaurant' ),
+					'name'              => 'menu-shortcode',
+					'type'              => 'text',
+					'instructions'      => esc_html__( 'Enter the Best Restaurant Menu Plugin Shortcode!', 'best-minimal-restaurant' ),
+					'required'          => 0,
+					'conditional_logic' => 0,
+					'wrapper'           => array(
+						'width' => '',
+						'class' => '',
+						'id'    => '',
+					),
+					'default_value'     => '[brm_restaurant_menu]',
+					'placeholder'       => '',
+					'prepend'           => '',
+					'append'            => '',
+					'maxlength'         => '',
+				),
+			),
+			'location'              => array(
+				array(
+					array(
+						'param'    => 'page_template',
+						'operator' => '==',
+						'value'    => 'template-menu.php',
+					),
+				),
+			),
+			'menu_order'            => 0,
+			'position'              => 'normal',
+			'style'                 => 'default',
+			'label_placement'       => 'top',
+			'instruction_placement' => 'label',
+			'hide_on_screen'        => '',
+			'active'                => true,
+			'description'           => '',
+		)
+	);
+
+endif;
