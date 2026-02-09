@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { SITE } from "@/lib/constants";
 import { SkillOrbit } from "@/components/SkillOrbit";
 import { GradientOrb } from "@/components/GradientOrb";
+import { ParticleText } from "@/components/ParticleText";
 
 export function Hero() {
   return (
@@ -43,19 +44,14 @@ export function Hero() {
             Portfolio
           </motion.p>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tighter mb-6"
-            style={{
-              fontFamily: "var(--font-display)",
-              letterSpacing: "-0.04em",
-              color: "var(--text-primary)",
-            }}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="pointer-events-auto mb-6 h-20 sm:h-24 md:h-28 lg:h-36"
           >
-            {SITE.name}
-          </motion.h1>
+            <ParticleText text={SITE.name} className="h-full w-full" />
+          </motion.div>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
