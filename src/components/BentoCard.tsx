@@ -19,7 +19,7 @@ export function BentoCard({ children, className = "", delay = 0 }: BentoCardProp
       style={{
         backgroundColor: "var(--surface)",
         borderColor: "var(--border)",
-        boxShadow: "var(--shadow-card)",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
       }}
       whileHover={{
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",

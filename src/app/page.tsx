@@ -8,7 +8,29 @@ import { GitHubGraph } from "@/components/GitHubGraph";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
 
-export default function Home() {
+interface ContributionDay {
+  date: string;
+  count: number;
+  level: number;
+}
+
+async function getGitHubContributions(): Promise<ContributionDay[] | null> {
+  try {
+    const res = await fetch(
+      "https://github-contributions-api.jogruber.de/v4/ErnestHysa?y=last",
+      { next: { revalidate: 86400 } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.contributions;
+  } catch {
+    return null;
+  }
+}
+
+export default async function Home() {
+  const contributions = await getGitHubContributions();
+
   return (
     <>
       <Navbar />
@@ -18,7 +40,7 @@ export default function Home() {
         <Stats />
         <Projects />
         <Skills />
-        <GitHubGraph />
+        <GitHubGraph contributions={contributions} />
         <Contact />
       </main>
       <Footer />

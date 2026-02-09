@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { BentoCard } from "@/components/BentoCard";
 import { SITE } from "@/lib/constants";
 import { useTheme } from "@/components/ThemeProvider";
@@ -11,55 +10,28 @@ interface ContributionDay {
   level: number;
 }
 
-interface ContributionData {
-  total: Record<string, number>;
-  contributions: ContributionDay[];
-}
-
 const LEVEL_COLORS = {
   light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
   dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
 };
 
-export function GitHubGraph() {
+interface GitHubGraphProps {
+  contributions: ContributionDay[] | null;
+}
+
+export function GitHubGraph({ contributions }: GitHubGraphProps) {
   const { theme } = useTheme();
-  const [data, setData] = useState<ContributionDay[] | null>(null);
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const res = await fetch(
-        `https://github-contributions-api.jogruber.de/v4/ErnestHysa?y=last`
-      );
-      if (!res.ok) throw new Error("API error");
-      const json: ContributionData = await res.json();
-      setData(json.contributions);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   const colors = LEVEL_COLORS[theme === "dark" ? "dark" : "light"];
 
   // Group contributions by week for the grid
   const weeks: ContributionDay[][] = [];
-  if (data) {
+  if (contributions) {
     let currentWeek: ContributionDay[] = [];
-    const firstDay = new Date(data[0].date).getDay();
-    // Pad the first week
+    const firstDay = new Date(contributions[0].date).getDay();
     for (let i = 0; i < firstDay; i++) {
       currentWeek.push({ date: "", count: 0, level: -1 });
     }
-    for (const day of data) {
+    for (const day of contributions) {
       currentWeek.push(day);
       if (currentWeek.length === 7) {
         weeks.push(currentWeek);
@@ -93,35 +65,25 @@ export function GitHubGraph() {
             </a>
           </div>
 
-          {loading && (
-            <div
-              className="h-32 rounded-lg animate-pulse"
-              style={{ backgroundColor: "var(--surface-hover)" }}
-            />
+          {!contributions && (
+            <p
+              className="text-sm text-center py-8"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Contribution data unavailable. Visit my{" "}
+              <a
+                href={SITE.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--accent)" }}
+              >
+                GitHub profile
+              </a>{" "}
+              to see my activity.
+            </p>
           )}
 
-          {error && (
-            <div className="text-center py-8">
-              <p
-                className="text-sm mb-3"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Could not load contribution data.
-              </p>
-              <button
-                onClick={fetchData}
-                className="text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer"
-                style={{
-                  backgroundColor: "var(--accent)",
-                  color: "white",
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {data && !loading && !error && (
+          {contributions && (
             <div className="overflow-x-auto">
               <div className="flex gap-[3px] min-w-fit">
                 {weeks.map((week, wi) => (
