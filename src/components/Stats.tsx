@@ -56,7 +56,7 @@ export function Stats() {
                     className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
                     style={{
                       background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-                      boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)",
+                      boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
                     }}
                   >
                     <Icon size={18} className="text-white" />

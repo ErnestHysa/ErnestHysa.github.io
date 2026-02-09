@@ -110,7 +110,7 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
   },
   {
     title: "Tools & Platforms",
-    skills: ["Git/GitHub", "Supabase", "PostgreSQL", "Stripe", "Linux/Shell"],
+    skills: ["Git/GitHub", "Docker", "Stripe", "Linux/Shell", "CI/CD"],
   },
   {
     title: "AI & Automation",
@@ -122,6 +122,10 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
       "Web Scraping",
       "LLM Benchmarking",
     ],
+  },
+  {
+    title: "Databases & Storage",
+    skills: ["PostgreSQL", "SQLite", "Supabase", "Firebase"],
   },
   {
     title: "Also Worked With",

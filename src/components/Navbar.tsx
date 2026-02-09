@@ -102,11 +102,11 @@ export function Navbar() {
                 className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-xl text-white"
                 style={{
                   background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-                  boxShadow: "0 2px 8px rgba(99, 102, 241, 0.2)",
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.2)",
                 }}
                 whileHover={{
                   scale: 1.03,
-                  boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
+                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.3)",
                 }}
                 whileTap={{ scale: 0.97 }}
               >

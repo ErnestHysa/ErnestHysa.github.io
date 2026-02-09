@@ -19,8 +19,8 @@ export function Hero() {
       <GradientOrb
         className="bottom-0 right-0"
         size="400px"
-        color1="rgba(168, 85, 247, 0.5)"
-        color2="rgba(99, 102, 241, 0.3)"
+        color1="rgba(20, 184, 166, 0.5)"
+        color2="rgba(16, 185, 129, 0.3)"
       />
 
       {/* Skill orbit background */}
@@ -76,13 +76,13 @@ export function Hero() {
               href="#projects"
               className="relative px-7 py-3 text-sm font-semibold rounded-xl text-white pointer-events-auto"
               style={{
-                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.6), rgba(168, 85, 247, 0.6))",
-                border: "1px solid rgba(129, 140, 248, 0.3)",
-                boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)",
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.6), rgba(20, 184, 166, 0.6))",
+                border: "1px solid rgba(52, 211, 153, 0.3)",
+                boxShadow: "0 4px 16px rgba(16, 185, 129, 0.25)",
               }}
               whileHover={{
                 scale: 1.03,
-                boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4)",
+                boxShadow: "0 8px 24px rgba(16, 185, 129, 0.4)",
               }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -98,7 +98,7 @@ export function Hero() {
                 backgroundColor: "transparent",
               }}
               whileHover={{
-                boxShadow: "0 0 30px rgba(99, 102, 241, 0.1)",
+                boxShadow: "0 0 30px rgba(16, 185, 129, 0.1)",
                 borderColor: "var(--accent)",
               }}
               whileTap={{ scale: 0.97 }}

@@ -40,7 +40,7 @@ export function Footer() {
                 scale: 1.1,
                 borderColor: "var(--accent)",
                 color: "var(--accent)",
-                boxShadow: "0 0 20px rgba(99, 102, 241, 0.1)",
+                boxShadow: "0 0 20px rgba(16, 185, 129, 0.1)",
               }}
               whileTap={{ scale: 0.95 }}
               aria-label={link.label}

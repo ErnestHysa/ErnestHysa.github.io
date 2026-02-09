@@ -148,11 +148,11 @@ export function Contact() {
                 className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-50 text-white"
                 style={{
                   background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-                  boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)",
+                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.25)",
                 }}
                 whileHover={{
                   scale: 1.02,
-                  boxShadow: "0 8px 24px rgba(99, 102, 241, 0.35)",
+                  boxShadow: "0 8px 24px rgba(16, 185, 129, 0.35)",
                 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -208,7 +208,7 @@ export function Contact() {
                   }}
                   whileHover={{
                     borderColor: "var(--border)",
-                    boxShadow: "0 0 20px rgba(99, 102, 241, 0.06)",
+                    boxShadow: "0 0 20px rgba(16, 185, 129, 0.06)",
                     x: 4,
                   }}
                   transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -242,7 +242,7 @@ export function Contact() {
                 }}
                 whileHover={{
                   borderColor: "var(--border)",
-                  boxShadow: "0 0 20px rgba(99, 102, 241, 0.06)",
+                  boxShadow: "0 0 20px rgba(16, 185, 129, 0.06)",
                   x: 4,
                 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}

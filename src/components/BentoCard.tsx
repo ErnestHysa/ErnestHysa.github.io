@@ -23,7 +23,7 @@ export function BentoCard({ children, className = "", delay = 0 }: BentoCardProp
       }}
       whileHover={{
         y: -4,
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 40px rgba(99, 102, 241, 0.08)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 40px rgba(16, 185, 129, 0.08)",
         transition: { type: "spring", stiffness: 300, damping: 20 },
       }}
     >

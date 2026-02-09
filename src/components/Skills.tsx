@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Code2, Layers, Wrench, Brain, Puzzle } from "lucide-react";
+import { Code2, Layers, Wrench, Brain, Database, Puzzle } from "lucide-react";
 import { BentoCard } from "@/components/BentoCard";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SKILL_CATEGORIES } from "@/lib/constants";
 
-const CATEGORY_ICONS = [Code2, Layers, Wrench, Brain, Puzzle];
+const CATEGORY_ICONS = [Code2, Layers, Wrench, Brain, Database, Puzzle];
 
 export function Skills() {
   return (
@@ -21,14 +21,13 @@ export function Skills() {
               <BentoCard
                 key={category.title}
                 delay={i * 0.08}
-                className={i === 0 ? "sm:col-span-2 lg:col-span-1" : ""}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center"
                     style={{
                       background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-                      boxShadow: "0 2px 8px rgba(99, 102, 241, 0.15)",
+                      boxShadow: "0 2px 8px rgba(16, 185, 129, 0.15)",
                     }}
                   >
                     <Icon size={14} className="text-white" />
@@ -53,7 +52,7 @@ export function Skills() {
                       whileHover={{
                         scale: 1.05,
                         borderColor: "var(--accent)",
-                        boxShadow: "0 0 16px rgba(99, 102, 241, 0.1)",
+                        boxShadow: "0 0 16px rgba(16, 185, 129, 0.1)",
                       }}
                       transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
