@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
 import { SITE } from "@/lib/constants";
 import { SkillOrbit } from "@/components/SkillOrbit";
 import { GradientOrb } from "@/components/GradientOrb";
@@ -27,8 +26,8 @@ export function Hero() {
       {/* Skill orbit background */}
       <SkillOrbit />
 
-      {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-4xl">
+      {/* Content — pointer-events-none so orbit canvas interaction works through gaps */}
+      <div className="relative z-10 text-center px-6 max-w-4xl pointer-events-none">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -75,14 +74,15 @@ export function Hero() {
           >
             <motion.a
               href="#projects"
-              className="relative px-7 py-3 text-sm font-semibold rounded-xl text-white overflow-hidden backdrop-blur-md"
+              className="relative px-7 py-3 text-sm font-semibold rounded-xl text-white pointer-events-auto"
               style={{
-                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.85), rgba(168, 85, 247, 0.85))",
-                boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.6), rgba(168, 85, 247, 0.6))",
+                border: "1px solid rgba(129, 140, 248, 0.3)",
+                boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)",
               }}
               whileHover={{
                 scale: 1.03,
-                boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+                boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4)",
               }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -91,14 +91,15 @@ export function Hero() {
             </motion.a>
             <motion.a
               href="#contact"
-              className="px-7 py-3 text-sm font-semibold rounded-xl border backdrop-blur-md"
+              className="px-7 py-3 text-sm font-semibold rounded-xl pointer-events-auto"
               style={{
-                borderColor: "var(--border)",
+                border: "1px solid var(--border)",
                 color: "var(--text-primary)",
                 backgroundColor: "transparent",
               }}
               whileHover={{
                 boxShadow: "0 0 30px rgba(99, 102, 241, 0.1)",
+                borderColor: "var(--accent)",
               }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
