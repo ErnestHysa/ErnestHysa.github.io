@@ -31,18 +31,28 @@ export function Navbar() {
           initial={{ y: -80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -80, opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b"
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed top-0 left-0 right-0 z-50 backdrop-blur-2xl"
           style={{
             backgroundColor: "var(--nav-bg)",
-            borderColor: "var(--border)",
           }}
         >
+          {/* Bottom glow line instead of hard border */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px"
+            style={{
+              background: "linear-gradient(90deg, transparent, var(--border), var(--accent-glow), var(--border), transparent)",
+            }}
+          />
+
           <nav className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
             <a
               href="#home"
               className="text-sm font-bold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
+              style={{
+                fontFamily: "var(--font-display)",
+                color: "var(--text-primary)",
+              }}
             >
               EH
             </a>
@@ -65,9 +75,9 @@ export function Navbar() {
                   {activeId === link.href.replace("#", "") && (
                     <motion.div
                       layoutId="nav-indicator"
-                      className="absolute inset-0 rounded-lg -z-10"
-                      style={{ backgroundColor: "var(--surface-hover)" }}
-                      transition={{ duration: 0.2 }}
+                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                      style={{ backgroundColor: "var(--accent)" }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
                     />
                   )}
                 </a>
@@ -76,46 +86,55 @@ export function Navbar() {
 
             {/* Right side: theme toggle + resume */}
             <div className="hidden md:flex items-center gap-2">
-              <button
+              <motion.button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg transition-colors cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
               >
                 {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <a
+              </motion.button>
+              <motion.a
                 href="/resume.pdf"
                 download
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-xl text-white"
                 style={{
-                  backgroundColor: "var(--accent)",
-                  color: "white",
+                  background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+                  boxShadow: "0 2px 8px rgba(99, 102, 241, 0.2)",
                 }}
+                whileHover={{
+                  scale: 1.03,
+                  boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
+                }}
+                whileTap={{ scale: 0.97 }}
               >
                 <Download size={14} />
                 Resume
-              </a>
+              </motion.a>
             </div>
 
             {/* Mobile hamburger */}
             <div className="flex md:hidden items-center gap-2">
-              <button
+              <motion.button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
+                whileTap={{ scale: 0.9 }}
                 aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
               >
                 {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="p-2 rounded-lg cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
+                whileTap={{ scale: 0.9 }}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
+              </motion.button>
             </div>
           </nav>
 
@@ -127,10 +146,10 @@ export function Navbar() {
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="md:hidden overflow-hidden border-t"
+                className="md:hidden overflow-hidden"
                 style={{
-                  backgroundColor: "var(--surface)",
-                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface-elevated)",
+                  borderTop: "1px solid var(--border-subtle)",
                 }}
               >
                 <div className="px-6 py-4 flex flex-col gap-2">
@@ -153,10 +172,9 @@ export function Navbar() {
                   <a
                     href="/resume.pdf"
                     download
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg mt-2"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-semibold rounded-xl mt-2 text-white"
                     style={{
-                      backgroundColor: "var(--accent)",
-                      color: "white",
+                      background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
                     }}
                   >
                     <Download size={14} />

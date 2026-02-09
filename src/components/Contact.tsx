@@ -2,8 +2,9 @@
 
 import { useState, FormEvent } from "react";
 import { motion } from "framer-motion";
-import { Mail, Github, Linkedin, Send, Download } from "lucide-react";
+import { Mail, Github, Linkedin, Send, Download, ArrowUpRight } from "lucide-react";
 import { BentoCard } from "@/components/BentoCard";
+import { SectionHeading } from "@/components/SectionHeading";
 import { SITE, FORMSPREE_ID } from "@/lib/constants";
 
 export function Contact() {
@@ -42,33 +43,34 @@ export function Contact() {
       href: `mailto:${SITE.email}`,
       icon: Mail,
       text: SITE.email,
+      color: "#ea4335",
     },
     {
       label: "GitHub",
       href: SITE.github,
       icon: Github,
       text: "ErnestHysa",
+      color: "#6e5494",
     },
     {
       label: "LinkedIn",
       href: SITE.linkedin,
       icon: Linkedin,
       text: "ernesthysa",
+      color: "#0a66c2",
     },
   ];
 
   return (
     <section id="contact" className="py-20 px-6">
       <div className="mx-auto max-w-6xl">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-3xl font-bold mb-12 text-center"
-          style={{ color: "var(--text-primary)" }}
+        <SectionHeading label="Contact" title="Get In Touch" />
+        <p
+          className="text-center text-base mb-12 -mt-10"
+          style={{ color: "var(--text-secondary)" }}
         >
-          Get In Touch
-        </motion.h2>
+          Let&apos;s build something together.
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
           {/* Contact Form */}
@@ -87,7 +89,7 @@ export function Contact() {
                   id="name"
                   name="name"
                   required
-                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl border text-sm outline-none transition-all duration-200 focus-glow"
                   style={{
                     backgroundColor: "var(--bg)",
                     borderColor: "var(--border)",
@@ -109,7 +111,7 @@ export function Contact() {
                   id="email"
                   name="email"
                   required
-                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl border text-sm outline-none transition-all duration-200 focus-glow"
                   style={{
                     backgroundColor: "var(--bg)",
                     borderColor: "var(--border)",
@@ -131,7 +133,7 @@ export function Contact() {
                   name="message"
                   required
                   rows={4}
-                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border text-sm outline-none transition-all duration-200 resize-none focus-glow"
                   style={{
                     backgroundColor: "var(--bg)",
                     borderColor: "var(--border)",
@@ -140,14 +142,19 @@ export function Contact() {
                 />
               </div>
 
-              <button
+              <motion.button
                 type="submit"
                 disabled={status === "sending"}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-50 text-white"
                 style={{
-                  backgroundColor: "var(--accent)",
-                  color: "white",
+                  background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+                  boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)",
                 }}
+                whileHover={{
+                  scale: 1.02,
+                  boxShadow: "0 8px 24px rgba(99, 102, 241, 0.35)",
+                }}
+                whileTap={{ scale: 0.98 }}
               >
                 <Send size={14} />
                 {status === "sending"
@@ -155,7 +162,7 @@ export function Contact() {
                   : status === "sent"
                     ? "Sent!"
                     : "Send Message"}
-              </button>
+              </motion.button>
 
               {status === "error" && (
                 <p className="text-sm text-red-500" role="alert">
@@ -178,36 +185,82 @@ export function Contact() {
           <BentoCard delay={0.1}>
             <h3
               className="text-lg font-bold mb-6"
-              style={{ color: "var(--text-primary)" }}
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "var(--font-display)",
+              }}
             >
               Connect
             </h3>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {socialLinks.map((link) => (
-                <a
+                <motion.a
                   key={link.label}
                   href={link.href}
                   target={link.href.startsWith("mailto:") ? undefined : "_blank"}
                   rel={link.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
-                  className="flex items-center gap-3 p-3 rounded-lg transition-colors"
-                  style={{ color: "var(--text-secondary)" }}
+                  className="flex items-center gap-3 p-3 rounded-xl transition-all border"
+                  style={{
+                    color: "var(--text-secondary)",
+                    borderColor: "var(--border-subtle)",
+                    backgroundColor: "var(--surface-hover)",
+                  }}
+                  whileHover={{
+                    borderColor: "var(--border)",
+                    boxShadow: "0 0 20px rgba(99, 102, 241, 0.06)",
+                    x: 4,
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
                   aria-label={link.label}
                 >
-                  <link.icon size={20} style={{ color: "var(--accent)" }} />
-                  <span className="text-sm font-medium">{link.text}</span>
-                </a>
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: `${link.color}15`,
+                      color: link.color,
+                    }}
+                  >
+                    <link.icon size={16} />
+                  </div>
+                  <span className="text-sm font-medium flex-1">{link.text}</span>
+                  <ArrowUpRight
+                    size={14}
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                </motion.a>
               ))}
 
-              <a
+              <motion.a
                 href="/resume.pdf"
                 download
-                className="flex items-center gap-3 p-3 rounded-lg transition-colors"
-                style={{ color: "var(--text-secondary)" }}
+                className="flex items-center gap-3 p-3 rounded-xl transition-all border"
+                style={{
+                  color: "var(--text-secondary)",
+                  borderColor: "var(--border-subtle)",
+                  backgroundColor: "var(--surface-hover)",
+                }}
+                whileHover={{
+                  borderColor: "var(--border)",
+                  boxShadow: "0 0 20px rgba(99, 102, 241, 0.06)",
+                  x: 4,
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
               >
-                <Download size={20} style={{ color: "var(--accent)" }} />
-                <span className="text-sm font-medium">Download Resume</span>
-              </a>
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+                  }}
+                >
+                  <Download size={16} className="text-white" />
+                </div>
+                <span className="text-sm font-medium flex-1">Download Resume</span>
+                <ArrowUpRight
+                  size={14}
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+              </motion.a>
             </div>
           </BentoCard>
         </div>

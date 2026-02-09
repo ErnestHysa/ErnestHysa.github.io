@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
+import { GitBranch, Code2, Calendar, Brain } from "lucide-react";
 import { BentoCard } from "@/components/BentoCard";
 import { STATS } from "@/lib/constants";
+
+const STAT_ICONS = [GitBranch, Code2, Calendar, Brain];
 
 function AnimatedCounter({
   value,
@@ -43,36 +46,44 @@ export function Stats() {
   return (
     <section className="py-12 px-6">
       <div className="mx-auto max-w-6xl">
-        <BentoCard>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {STATS.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="text-center"
-              >
-                <div
-                  className="text-3xl sm:text-4xl font-bold mb-1"
-                  style={{ color: "var(--accent)" }}
-                >
-                  <AnimatedCounter
-                    value={stat.value}
-                    suffix={stat.suffix}
-                  />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {STATS.map((stat, i) => {
+            const Icon = STAT_ICONS[i];
+            return (
+              <BentoCard key={stat.label} delay={i * 0.08}>
+                <div className="text-center">
+                  <div
+                    className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                    style={{
+                      background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+                      boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)",
+                    }}
+                  >
+                    <Icon size={18} className="text-white" />
+                  </div>
+                  <div
+                    className="text-3xl sm:text-4xl font-bold mb-1"
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <AnimatedCounter
+                      value={stat.value}
+                      suffix={stat.suffix}
+                    />
+                  </div>
+                  <div
+                    className="text-xs font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {stat.label}
+                  </div>
                 </div>
-                <div
-                  className="text-sm font-medium"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {stat.label}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </BentoCard>
+              </BentoCard>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
