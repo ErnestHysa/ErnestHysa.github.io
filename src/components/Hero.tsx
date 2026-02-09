@@ -75,9 +75,9 @@ export function Hero() {
           >
             <motion.a
               href="#projects"
-              className="relative px-7 py-3 text-sm font-semibold rounded-xl text-white overflow-hidden"
+              className="relative px-7 py-3 text-sm font-semibold rounded-xl text-white overflow-hidden backdrop-blur-md"
               style={{
-                background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.85), rgba(168, 85, 247, 0.85))",
                 boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
               }}
               whileHover={{
@@ -91,11 +91,11 @@ export function Hero() {
             </motion.a>
             <motion.a
               href="#contact"
-              className="px-7 py-3 text-sm font-semibold rounded-xl border backdrop-blur-sm"
+              className="px-7 py-3 text-sm font-semibold rounded-xl border backdrop-blur-md"
               style={{
                 borderColor: "var(--border)",
                 color: "var(--text-primary)",
-                backgroundColor: "var(--surface)",
+                backgroundColor: "transparent",
               }}
               whileHover={{
                 boxShadow: "0 0 30px rgba(99, 102, 241, 0.1)",
