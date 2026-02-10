@@ -8,7 +8,7 @@ import { SectionHeading } from "@/components/SectionHeading";
 import { PROJECTS } from "@/lib/constants";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Web App": "#6366f1",
+  "Web App": "#10b981",
   Mobile: "#06b6d4",
   CLI: "#f59e0b",
   "AI/ML": "#8b5cf6",
@@ -17,7 +17,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function ProjectCard({ project, index }: { project: (typeof PROJECTS)[number]; index: number }) {
   const [expanded, setExpanded] = useState(false);
-  const catColor = CATEGORY_COLORS[project.category] || "#6366f1";
+  const catColor = CATEGORY_COLORS[project.category] || "#10b981";
 
   return (
     <BentoCard

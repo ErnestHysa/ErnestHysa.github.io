@@ -24,7 +24,7 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
   const mouseRef = useRef({ x: -1000, y: -1000 });
   const particlesRef = useRef<TextParticle[]>([]);
   const animFrameRef = useRef<number>(0);
-  const initializedRef = useRef(false);
+  const dimsRef = useRef({ w: 0, h: 0 });
   const { theme } = useTheme();
 
   const sampleTextPixels = useCallback(
@@ -61,7 +61,6 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       const pixels = imageData.data;
       const particles: TextParticle[] = [];
 
-      // Adaptive gap: more particles on larger screens, fewer on mobile
       const gap = width < 500 ? 5 : width < 900 ? 3 : 2;
 
       const colors = isDark
@@ -84,8 +83,6 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
         for (let x = 0; x < width; x += gap) {
           const i = (y * width + x) * 4;
           if (pixels[i + 3] > 128) {
-            // Start at target position (visible immediately)
-            // then scatter outward and reassemble for entrance effect
             particles.push({
               x,
               y,
@@ -112,6 +109,8 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
     if (!ctx) return;
 
     const isDark = theme === "dark";
+    let retryCount = 0;
+    const MAX_RETRIES = 20;
 
     const setupCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -120,38 +119,42 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
 
       if (rect.width < 10 || rect.height < 10) return false;
 
+      // Cache CSS dimensions for the draw loop
+      dimsRef.current = { w: rect.width, h: rect.height };
+
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const particles = sampleTextPixels(text, rect.width, rect.height, isDark);
+      const particles = sampleTextPixels(
+        text,
+        rect.width,
+        rect.height,
+        isDark
+      );
       if (particles.length === 0) return false;
 
       particlesRef.current = particles;
-      initializedRef.current = true;
       return true;
     };
 
-    // Wait for fonts to load, then initialize
     const init = () => {
-      if (!setupCanvas()) {
-        // Retry after a short delay if setup failed
+      if (setupCanvas()) return;
+      retryCount++;
+      if (retryCount < MAX_RETRIES) {
         setTimeout(init, 150);
       }
     };
 
     document.fonts.ready.then(init);
 
-    // Debounced resize
+    // Debounced resize — recache dimensions and resample
     let resizeTimer: ReturnType<typeof setTimeout>;
     const debouncedResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        initializedRef.current = false;
-        setupCanvas();
-      }, 200);
+      resizeTimer = setTimeout(setupCanvas, 200);
     };
     window.addEventListener("resize", debouncedResize);
 
@@ -186,10 +189,8 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
     const DAMPING = 0.88;
 
     function draw() {
-      const parent = canvas!.parentElement!;
-      const rect = parent.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      // Use cached dimensions — never call getBoundingClientRect in the loop
+      const { w, h } = dimsRef.current;
       ctx!.clearRect(0, 0, w, h);
 
       const particles = particlesRef.current;
@@ -231,12 +232,22 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       animFrameRef.current = requestAnimationFrame(draw);
     }
 
-    // Reduced motion: skip animation, draw at target
+    // Reduced motion: draw static particles at target after fonts load
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (!prefersReducedMotion) {
+    if (prefersReducedMotion) {
+      document.fonts.ready.then(() => {
+        if (!setupCanvas()) return;
+        particlesRef.current.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p.targetX, p.targetY, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+        });
+      });
+    } else {
       animFrameRef.current = requestAnimationFrame(draw);
     }
 

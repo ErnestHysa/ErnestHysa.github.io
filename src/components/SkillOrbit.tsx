@@ -118,20 +118,20 @@ export function SkillOrbit() {
       const particles = particlesRef.current;
       const mouse = mouseRef.current;
 
-      // Find which particle is hovered
+      // Find which particle is closest to cursor
       let hoveredIndex = -1;
+      let closestDist = 60; // max hover detection range
       particles.forEach((p, i) => {
         const wobble = Math.sin(p.angle * p.wobbleFreq + p.phase + time * 0.001) * p.wobbleAmp;
         const r = p.radius + wobble;
-        const baseX = cx + Math.cos(p.angle) * r;
-        const baseY = cy + Math.sin(p.angle) * r;
-        const x = baseX + p.offsetX;
-        const y = baseY + p.offsetY;
+        const x = cx + Math.cos(p.angle) * r + p.offsetX;
+        const y = cy + Math.sin(p.angle) * r + p.offsetY;
 
         const dx = mouse.x - x;
         const dy = mouse.y - y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 60 && (hoveredIndex === -1 || dist < Math.sqrt((mouse.x - (cx + Math.cos(particles[hoveredIndex].angle) * particles[hoveredIndex].radius + particles[hoveredIndex].offsetX)) ** 2 + (mouse.y - (cy + Math.sin(particles[hoveredIndex].angle) * particles[hoveredIndex].radius + particles[hoveredIndex].offsetY)) ** 2))) {
+        if (dist < closestDist) {
+          closestDist = dist;
           hoveredIndex = i;
         }
       });
