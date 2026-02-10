@@ -65,12 +65,16 @@ export function Contact() {
     <section id="contact" className="py-20 px-6">
       <div className="mx-auto max-w-6xl">
         <SectionHeading label="Contact" title="Get In Touch" />
-        <p
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3 }}
           className="text-center text-base mb-12 -mt-10"
           style={{ color: "var(--text-secondary)" }}
         >
           Let&apos;s build something together.
-        </p>
+        </motion.p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
           {/* Contact Form */}
