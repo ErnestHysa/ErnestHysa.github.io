@@ -24,6 +24,7 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
   const mouseRef = useRef({ x: -1000, y: -1000 });
   const particlesRef = useRef<TextParticle[]>([]);
   const animFrameRef = useRef<number>(0);
+  const initializedRef = useRef(false);
   const { theme } = useTheme();
 
   const sampleTextPixels = useCallback(
@@ -33,6 +34,8 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       height: number,
       isDark: boolean
     ): TextParticle[] => {
+      if (width < 10 || height < 10) return [];
+
       const offscreen = document.createElement("canvas");
       offscreen.width = width;
       offscreen.height = height;
@@ -41,9 +44,12 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       // Responsive font size — fill ~80% of width
       let fontSize = 80;
       offCtx.font = `800 ${fontSize}px "Satoshi", "Inter", system-ui, sans-serif`;
-      let measured = offCtx.measureText(text).width;
+      const measured = offCtx.measureText(text).width;
+      if (measured <= 0) return [];
+
       fontSize = Math.floor((fontSize * width * 0.82) / measured);
-      fontSize = Math.min(fontSize, height * 0.7);
+      fontSize = Math.min(fontSize, Math.floor(height * 0.72));
+      if (fontSize < 8) return [];
 
       offCtx.font = `800 ${fontSize}px "Satoshi", "Inter", system-ui, sans-serif`;
       offCtx.textAlign = "center";
@@ -56,7 +62,7 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       const particles: TextParticle[] = [];
 
       // Adaptive gap: more particles on larger screens, fewer on mobile
-      const gap = width < 500 ? 4 : width < 900 ? 3 : 2;
+      const gap = width < 500 ? 5 : width < 900 ? 3 : 2;
 
       const colors = isDark
         ? [
@@ -78,12 +84,11 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
         for (let x = 0; x < width; x += gap) {
           const i = (y * width + x) * 4;
           if (pixels[i + 3] > 128) {
-            // Scatter initial positions: random ring around the text
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 300 + Math.random() * 500;
+            // Start at target position (visible immediately)
+            // then scatter outward and reassemble for entrance effect
             particles.push({
-              x: width / 2 + Math.cos(angle) * dist,
-              y: height / 2 + Math.sin(angle) * dist,
+              x,
+              y,
               targetX: x,
               targetY: y,
               vx: 0,
@@ -108,30 +113,45 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
 
     const isDark = theme === "dark";
 
-    const resize = () => {
+    const setupCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
       const parent = canvas.parentElement!;
       const rect = parent.getBoundingClientRect();
+
+      if (rect.width < 10 || rect.height < 10) return false;
+
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      particlesRef.current = sampleTextPixels(
-        text,
-        rect.width,
-        rect.height,
-        isDark
-      );
+      const particles = sampleTextPixels(text, rect.width, rect.height, isDark);
+      if (particles.length === 0) return false;
+
+      particlesRef.current = particles;
+      initializedRef.current = true;
+      return true;
     };
 
-    resize();
-    // Debounced resize to avoid particle re-sampling spam
+    // Wait for fonts to load, then initialize
+    const init = () => {
+      if (!setupCanvas()) {
+        // Retry after a short delay if setup failed
+        setTimeout(init, 150);
+      }
+    };
+
+    document.fonts.ready.then(init);
+
+    // Debounced resize
     let resizeTimer: ReturnType<typeof setTimeout>;
     const debouncedResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(resize, 200);
+      resizeTimer = setTimeout(() => {
+        initializedRef.current = false;
+        setupCanvas();
+      }, 200);
     };
     window.addEventListener("resize", debouncedResize);
 
@@ -165,8 +185,6 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
     const SPRING = 0.06;
     const DAMPING = 0.88;
 
-    let assemblyT = 0;
-
     function draw() {
       const parent = canvas!.parentElement!;
       const rect = parent.getBoundingClientRect();
@@ -176,11 +194,6 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
 
       const particles = particlesRef.current;
       const mouse = mouseRef.current;
-
-      // Entrance: ease-in assembly over ~2 seconds (120 frames)
-      if (assemblyT < 1) assemblyT = Math.min(1, assemblyT + 0.012);
-      // Cubic ease-out for smooth deceleration
-      const ease = 1 - Math.pow(1 - assemblyT, 3);
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
@@ -198,8 +211,8 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
         }
 
         // Spring toward target
-        p.vx += (p.targetX - p.x) * SPRING * ease;
-        p.vy += (p.targetY - p.y) * SPRING * ease;
+        p.vx += (p.targetX - p.x) * SPRING;
+        p.vy += (p.targetY - p.y) * SPRING;
 
         // Damping
         p.vx *= DAMPING;
@@ -223,16 +236,7 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (prefersReducedMotion) {
-      particlesRef.current.forEach((p) => {
-        p.x = p.targetX;
-        p.y = p.targetY;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-      });
-    } else {
+    if (!prefersReducedMotion) {
       animFrameRef.current = requestAnimationFrame(draw);
     }
 

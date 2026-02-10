@@ -28,7 +28,7 @@ export function Hero() {
       <SkillOrbit />
 
       {/* Content — pointer-events-none so orbit canvas interaction works through gaps */}
-      <div className="relative z-10 text-center px-6 max-w-4xl pointer-events-none">
+      <div className="relative z-10 text-center px-6 w-full max-w-4xl pointer-events-none">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
