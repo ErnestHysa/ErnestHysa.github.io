@@ -95,7 +95,7 @@ export function AudioReactiveProvider({
     analyserRef.current = analyser;
 
     const gain = audioCtx.createGain();
-    gain.gain.value = 0.15;
+    gain.gain.value = 0.075;
     gainRef.current = gain;
 
     const audio = new Audio("/audio/chill.mp3");

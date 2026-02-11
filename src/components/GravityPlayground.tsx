@@ -157,16 +157,16 @@ export function GravityPlayground() {
       if (dir !== 0 && dir !== lastDir) {
         if (lastDir !== 0) {
           const amplitude = Math.abs(e.clientX - lastPeakX);
-          // Only count if the reversal covered meaningful distance (>30px)
-          if (amplitude > 30) {
+          // Only count if the reversal covered large distance (>100px)
+          if (amplitude > 100) {
             // Reset if too much time passed since last reversal
-            if (now - lastReversalTime > 600) {
+            if (now - lastReversalTime > 500) {
               reversals = 0;
             }
             reversals++;
             lastReversalTime = now;
 
-            if (reversals >= 3) {
+            if (reversals >= 5) {
               reversals = 0;
               mouseHistoryRef.current = [];
               trigger();
