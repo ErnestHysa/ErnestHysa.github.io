@@ -1,17 +1,19 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  cinematicToggle: (buttonRect: DOMRect) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: "dark",
   toggleTheme: () => {},
+  cinematicToggle: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -35,12 +37,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
+  }, []);
+
+  const cinematicToggle = useCallback(
+    (buttonRect: DOMRect) => {
+      const newTheme = theme === "dark" ? "light" : "dark";
+      const newBg = newTheme === "dark" ? "#09090b" : "#fafafa";
+
+      // Find the transition overlay and trigger animation
+      const overlay = document.getElementById("theme-transition-overlay");
+      if (overlay && (overlay as unknown as { __trigger?: (rect: DOMRect, bg: string) => void }).__trigger) {
+        (overlay as unknown as { __trigger: (rect: DOMRect, bg: string) => void }).__trigger(buttonRect, newBg);
+      } else {
+        // Fallback: instant toggle
+        toggleTheme();
+      }
+    },
+    [theme, toggleTheme]
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, cinematicToggle }}>
       {children}
     </ThemeContext.Provider>
   );

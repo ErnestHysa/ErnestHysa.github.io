@@ -5,6 +5,7 @@ import { SITE } from "@/lib/constants";
 import { SkillOrbit } from "@/components/SkillOrbit";
 import { GradientOrb } from "@/components/GradientOrb";
 import { ParticleText } from "@/components/ParticleText";
+import { AnimatedInitials } from "@/components/AnimatedInitials";
 
 export function Hero() {
   return (
@@ -34,6 +35,15 @@ export function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="mb-4"
+          >
+            <AnimatedInitials />
+          </motion.div>
+
           <motion.p
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}

@@ -9,6 +9,8 @@ import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
 import { CustomCursor } from "@/components/CustomCursor";
 import { AuroraBackground } from "@/components/AuroraBackground";
+import { ScrollProgress } from "@/components/ScrollProgress";
+import { PageEffects } from "@/components/PageEffects";
 
 interface ContributionDay {
   date: string;
@@ -35,8 +37,10 @@ export default async function Home() {
 
   return (
     <>
+      <PageEffects />
       <CustomCursor />
       <AuroraBackground />
+      <ScrollProgress />
       <Navbar />
       <main id="main">
         <Hero />

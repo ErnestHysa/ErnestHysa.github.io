@@ -14,7 +14,12 @@ export function Navbar() {
     NAV_LINKS.map((l) => l.href.replace("#", "")),
     80
   );
-  const { theme, toggleTheme } = useTheme();
+  const { theme, cinematicToggle } = useTheme();
+
+  const handleThemeToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    cinematicToggle(rect);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -87,7 +92,7 @@ export function Navbar() {
             {/* Right side: theme toggle + resume */}
             <div className="hidden md:flex items-center gap-2">
               <motion.button
-                onClick={toggleTheme}
+                onClick={handleThemeToggle}
                 className="p-2 rounded-lg transition-colors cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
                 whileHover={{ scale: 1.1 }}
@@ -118,7 +123,7 @@ export function Navbar() {
             {/* Mobile hamburger */}
             <div className="flex md:hidden items-center gap-2">
               <motion.button
-                onClick={toggleTheme}
+                onClick={handleThemeToggle}
                 className="p-2 rounded-lg cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
                 whileTap={{ scale: 0.9 }}

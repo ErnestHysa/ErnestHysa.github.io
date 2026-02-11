@@ -8,6 +8,10 @@ import { STATS } from "@/lib/constants";
 
 const STAT_ICONS = [GitBranch, Code2, Calendar, Brain];
 
+function easeOutExpo(t: number): number {
+  return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
+
 function AnimatedCounter({
   value,
   suffix,
@@ -16,29 +20,65 @@ function AnimatedCounter({
   suffix: string;
 }) {
   const [count, setCount] = useState(0);
+  const [done, setDone] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true });
 
   useEffect(() => {
     if (!isInView) return;
 
-    let start = 0;
-    const duration = 1500;
-    const step = duration / value;
-    const timer = setInterval(() => {
-      start += 1;
-      setCount(start);
-      if (start >= value) clearInterval(timer);
-    }, step);
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduced) {
+      setCount(value);
+      setDone(true);
+      return;
+    }
 
-    return () => clearInterval(timer);
+    const duration = 2000;
+    let start: number | null = null;
+    let raf: number;
+
+    const animate = (timestamp: number) => {
+      if (start === null) start = timestamp;
+      const elapsed = timestamp - start;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = easeOutExpo(t);
+      setCount(Math.round(eased * value));
+
+      if (t < 1) {
+        raf = requestAnimationFrame(animate);
+      } else {
+        setDone(true);
+      }
+    };
+
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
   }, [isInView, value]);
 
   return (
-    <span ref={ref}>
-      {count}
+    <motion.span
+      ref={ref}
+      animate={
+        done
+          ? {
+              scale: [1, 1.05, 1],
+              textShadow: [
+                "0 0 0px transparent",
+                "0 0 16px rgba(16, 185, 129, 0.5)",
+                "0 0 0px transparent",
+              ],
+            }
+          : undefined
+      }
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      style={{ display: "inline-block" }}
+    >
+      {count.toLocaleString()}
       {suffix}
-    </span>
+    </motion.span>
   );
 }
 

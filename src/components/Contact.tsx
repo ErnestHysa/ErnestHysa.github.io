@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Mail, Github, Linkedin, Send, Download, ArrowUpRight } from "lucide-react";
 import { BentoCard } from "@/components/BentoCard";
 import { SectionHeading } from "@/components/SectionHeading";
+import { Confetti } from "@/components/Confetti";
 import { SITE, FORMSPREE_ID } from "@/lib/constants";
 
 export function Contact() {
@@ -62,7 +63,8 @@ export function Contact() {
   ];
 
   return (
-    <section id="contact" className="py-20 px-6">
+    <section id="contact" className="relative py-20 px-6">
+      <Confetti trigger={status === "sent"} />
       <div className="mx-auto max-w-6xl">
         <SectionHeading label="Contact" title="Get In Touch" />
         <motion.p
