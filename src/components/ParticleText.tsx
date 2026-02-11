@@ -112,28 +112,28 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
     let retryCount = 0;
     const MAX_RETRIES = 20;
 
+    const parent = canvas.parentElement!;
+
     const setupCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
-      const parent = canvas.parentElement!;
-      const rect = parent.getBoundingClientRect();
+      // Use offsetWidth/offsetHeight — these give LAYOUT dimensions
+      // unaffected by ancestor CSS transforms (Framer Motion scale).
+      // getBoundingClientRect() returns visual dimensions AFTER transforms,
+      // which are compressed during entrance animations.
+      const w = parent.offsetWidth;
+      const h = parent.offsetHeight;
 
-      if (rect.width < 10 || rect.height < 10) return false;
+      if (w < 10 || h < 10) return false;
 
-      // Cache CSS dimensions for the draw loop
-      dimsRef.current = { w: rect.width, h: rect.height };
+      dimsRef.current = { w, h };
 
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const particles = sampleTextPixels(
-        text,
-        rect.width,
-        rect.height,
-        isDark
-      );
+      const particles = sampleTextPixels(text, w, h, isDark);
       if (particles.length === 0) return false;
 
       particlesRef.current = particles;
@@ -150,13 +150,13 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
 
     document.fonts.ready.then(init);
 
-    // Debounced resize — recache dimensions and resample
+    // ResizeObserver — re-sample when container actually resizes
     let resizeTimer: ReturnType<typeof setTimeout>;
-    const debouncedResize = () => {
+    const observer = new ResizeObserver(() => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(setupCanvas, 200);
-    };
-    window.addEventListener("resize", debouncedResize);
+      resizeTimer = setTimeout(setupCanvas, 150);
+    });
+    observer.observe(parent);
 
     const handleMouse = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -252,7 +252,7 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
     }
 
     return () => {
-      window.removeEventListener("resize", debouncedResize);
+      observer.disconnect();
       clearTimeout(resizeTimer);
       canvas.removeEventListener("mousemove", handleMouse);
       canvas.removeEventListener("mouseleave", handleLeave);
