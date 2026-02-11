@@ -140,38 +140,34 @@ export function GravityPlayground() {
       const now = performance.now();
       history.push({ x: e.clientX, y: e.clientY, t: now });
 
-      // Keep only last 5 entries
-      while (history.length > 5) history.shift();
+      // Keep last 10 entries for better shake detection
+      while (history.length > 10) history.shift();
 
-      if (history.length < 3) return;
+      // Prune entries older than 500ms
+      while (history.length > 2 && now - history[0].t > 500) history.shift();
 
-      const oldest = history[0];
-      const newest = history[history.length - 1];
-      const elapsed = newest.t - oldest.t;
+      if (history.length < 4) return;
 
-      if (elapsed > 300 || elapsed < 10) return;
-
-      // Calculate total distance
-      let totalDist = 0;
-      for (let i = 1; i < history.length; i++) {
-        const dx = history[i].x - history[i - 1].x;
-        const dy = history[i].y - history[i - 1].y;
-        totalDist += Math.sqrt(dx * dx + dy * dy);
-      }
-
-      const avgVelocity = totalDist / (elapsed / 1000);
-
-      // Check for direction changes (shake pattern)
+      // Count direction changes on X axis (shake = back-and-forth)
       let dirChanges = 0;
       for (let i = 2; i < history.length; i++) {
         const dx1 = history[i - 1].x - history[i - 2].x;
         const dx2 = history[i].x - history[i - 1].x;
-        if ((dx1 > 0 && dx2 < 0) || (dx1 < 0 && dx2 > 0)) {
+        if ((dx1 > 5 && dx2 < -5) || (dx1 < -5 && dx2 > 5)) {
           dirChanges++;
         }
       }
 
-      if (avgVelocity > 3000 && dirChanges >= 2) {
+      // Also check Y axis direction changes
+      for (let i = 2; i < history.length; i++) {
+        const dy1 = history[i - 1].y - history[i - 2].y;
+        const dy2 = history[i].y - history[i - 1].y;
+        if ((dy1 > 5 && dy2 < -5) || (dy1 < -5 && dy2 > 5)) {
+          dirChanges++;
+        }
+      }
+
+      if (dirChanges >= 3) {
         mouseHistoryRef.current = [];
         trigger();
       }
