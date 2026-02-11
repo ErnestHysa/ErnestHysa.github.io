@@ -73,17 +73,117 @@
     position: relative;
   }
 
-  /* Ambient gradient atmosphere */
-  body::before {
-    content: "";
+  /* Aurora background — animated blobs replace static body::before */
+  .aurora-container {
     position: fixed;
     inset: 0;
     z-index: -1;
+    overflow: hidden;
     pointer-events: none;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-glow), transparent),
-      radial-gradient(ellipse 50% 40% at 80% 60%, rgba(20, 184, 166, 0.04), transparent),
-      radial-gradient(ellipse 40% 30% at 20% 80%, rgba(16, 185, 129, 0.03), transparent);
+  }
+
+  .aurora-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    will-change: transform;
+    opacity: 0.15;
+  }
+
+  [data-theme="dark"] .aurora-blob {
+    opacity: 0.25;
+  }
+
+  .aurora-1 {
+    width: 50vw;
+    height: 50vh;
+    top: -10%;
+    left: 20%;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.4), transparent 70%);
+    animation: aurora-1 20s ease-in-out infinite alternate;
+  }
+
+  .aurora-2 {
+    width: 40vw;
+    height: 40vh;
+    bottom: 0;
+    right: 10%;
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.35), transparent 70%);
+    animation: aurora-2 25s ease-in-out infinite alternate;
+  }
+
+  .aurora-3 {
+    width: 35vw;
+    height: 35vh;
+    top: 50%;
+    left: -5%;
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.3), transparent 70%);
+    animation: aurora-3 30s ease-in-out infinite alternate;
+  }
+
+  @keyframes aurora-1 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(30%, 20%) scale(1.2); }
+  }
+
+  @keyframes aurora-2 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(-25%, -30%) scale(1.15); }
+  }
+
+  @keyframes aurora-3 {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(20%, -15%) scale(1.3); }
+  }
+
+  /* Custom cursor */
+  .cursor-hidden,
+  .cursor-hidden * {
+    cursor: none !important;
+  }
+
+  .cursor-dot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin-top: -4px;
+    margin-left: -4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent);
+    pointer-events: none;
+    z-index: 10001;
+    opacity: 0;
+    will-change: transform;
+    transition: width 0.2s ease, height 0.2s ease, margin 0.2s ease,
+      background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+  }
+
+  .cursor-dot.cursor-hover {
+    margin-top: -20px;
+    margin-left: -20px;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  .cursor-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin-top: -24px;
+    margin-left: -24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-glow-strong), transparent 70%);
+    pointer-events: none;
+    z-index: 10000;
+    opacity: 0;
+    will-change: transform;
+    transition: opacity 0.3s ease;
   }
 
   /* Noise texture overlay */

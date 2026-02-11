@@ -7,6 +7,8 @@ import { Skills } from "@/components/Skills";
 import { GitHubGraph } from "@/components/GitHubGraph";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
+import { CustomCursor } from "@/components/CustomCursor";
+import { AuroraBackground } from "@/components/AuroraBackground";
 
 interface ContributionDay {
   date: string;
@@ -33,6 +35,8 @@ export default async function Home() {
 
   return (
     <>
+      <CustomCursor />
+      <AuroraBackground />
       <Navbar />
       <main id="main">
         <Hero />
