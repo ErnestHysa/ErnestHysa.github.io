@@ -135,41 +135,46 @@ export function GravityPlayground() {
       }
     };
 
+    // Track peaks/valleys for shake detection
+    let lastPeakX = 0;
+    let lastDir = 0; // -1 = moving left, 1 = moving right
+    let reversals = 0;
+    let lastReversalTime = 0;
+
     const onMouseMove = (e: MouseEvent) => {
-      const history = mouseHistoryRef.current;
       const now = performance.now();
+      const history = mouseHistoryRef.current;
       history.push({ x: e.clientX, y: e.clientY, t: now });
 
-      // Keep last 10 entries for better shake detection
-      while (history.length > 10) history.shift();
+      // Keep last 3 for smoothed direction
+      while (history.length > 3) history.shift();
+      if (history.length < 2) return;
 
-      // Prune entries older than 500ms
-      while (history.length > 2 && now - history[0].t > 500) history.shift();
+      // Smoothed direction from oldest to newest in buffer
+      const dx = history[history.length - 1].x - history[0].x;
+      const dir = dx > 0 ? 1 : dx < 0 ? -1 : 0;
 
-      if (history.length < 4) return;
+      if (dir !== 0 && dir !== lastDir) {
+        if (lastDir !== 0) {
+          const amplitude = Math.abs(e.clientX - lastPeakX);
+          // Only count if the reversal covered meaningful distance (>30px)
+          if (amplitude > 30) {
+            // Reset if too much time passed since last reversal
+            if (now - lastReversalTime > 600) {
+              reversals = 0;
+            }
+            reversals++;
+            lastReversalTime = now;
 
-      // Count direction changes on X axis (shake = back-and-forth)
-      let dirChanges = 0;
-      for (let i = 2; i < history.length; i++) {
-        const dx1 = history[i - 1].x - history[i - 2].x;
-        const dx2 = history[i].x - history[i - 1].x;
-        if ((dx1 > 5 && dx2 < -5) || (dx1 < -5 && dx2 > 5)) {
-          dirChanges++;
+            if (reversals >= 3) {
+              reversals = 0;
+              mouseHistoryRef.current = [];
+              trigger();
+            }
+          }
         }
-      }
-
-      // Also check Y axis direction changes
-      for (let i = 2; i < history.length; i++) {
-        const dy1 = history[i - 1].y - history[i - 2].y;
-        const dy2 = history[i].y - history[i - 1].y;
-        if ((dy1 > 5 && dy2 < -5) || (dy1 < -5 && dy2 > 5)) {
-          dirChanges++;
-        }
-      }
-
-      if (dirChanges >= 3) {
-        mouseHistoryRef.current = [];
-        trigger();
+        lastPeakX = e.clientX;
+        lastDir = dir;
       }
     };
 
