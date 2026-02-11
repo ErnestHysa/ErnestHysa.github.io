@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useAudioReactive } from "./AudioReactiveProvider";
 
 interface BentoCardProps {
   children: React.ReactNode;
@@ -17,6 +18,35 @@ export function BentoCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0, shineX: 50, shineY: 50 });
   const [hovered, setHovered] = useState(false);
+  const { isPlaying, bands } = useAudioReactive();
+  const audioRafRef = useRef<number>(0);
+
+  // Mid-frequency breathing effect via CSS scale property
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    if (!isPlaying) {
+      card.style.scale = "";
+      cancelAnimationFrame(audioRafRef.current);
+      return;
+    }
+
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduced) return;
+
+    const animate = () => {
+      const mid = bands.current.mid;
+      card.style.scale = String(1 + mid * 0.008);
+      audioRafRef.current = requestAnimationFrame(animate);
+    };
+
+    audioRafRef.current = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(audioRafRef.current);
+  }, [isPlaying, bands]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const card = cardRef.current;
@@ -52,6 +82,7 @@ export function BentoCard({
       {/* Inner: 3D tilt + all visual styling (no transform conflict) */}
       <div
         ref={cardRef}
+        data-bento-card
         className={`relative rounded-2xl border p-6 overflow-hidden backdrop-blur-xl ${className}`}
         style={{
           backgroundColor: "var(--surface)",
