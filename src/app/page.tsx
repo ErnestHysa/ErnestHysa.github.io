@@ -11,6 +11,9 @@ import { CustomCursor } from "@/components/CustomCursor";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { PageEffects } from "@/components/PageEffects";
+import { GravityPlayground } from "@/components/GravityPlayground";
+import { MusicToggle } from "@/components/MusicToggle";
+import { AudioVignette } from "@/components/AudioVignette";
 
 interface ContributionDay {
   date: string;
@@ -38,6 +41,9 @@ export default async function Home() {
   return (
     <>
       <PageEffects />
+      <GravityPlayground />
+      <MusicToggle />
+      <AudioVignette />
       <CustomCursor />
       <AuroraBackground />
       <ScrollProgress />

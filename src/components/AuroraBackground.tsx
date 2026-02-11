@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useAudioReactive } from "./AudioReactiveProvider";
 
 // Color phases: emerald → cyan → violet
 const PHASES = [
@@ -50,6 +51,8 @@ function getColorAtScroll(scrollPct: number, blobIndex: number) {
 
 export function AuroraBackground() {
   const blobRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const { isPlaying, bands } = useAudioReactive();
+  const audioRafRef = useRef<number>(0);
 
   useEffect(() => {
     const reduced = window.matchMedia(
@@ -82,6 +85,36 @@ export function AuroraBackground() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Bass-reactive blob scaling
+  useEffect(() => {
+    if (!isPlaying) {
+      // Reset scale
+      blobRefs.current.forEach((blob) => {
+        if (blob) blob.style.scale = "";
+      });
+      cancelAnimationFrame(audioRafRef.current);
+      return;
+    }
+
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduced) return;
+
+    const animate = () => {
+      const bass = bands.current.bass;
+      const s = String(1 + bass * 0.15);
+      blobRefs.current.forEach((blob) => {
+        if (blob) blob.style.scale = s;
+      });
+      audioRafRef.current = requestAnimationFrame(animate);
+    };
+
+    audioRafRef.current = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(audioRafRef.current);
+  }, [isPlaying, bands]);
 
   return (
     <div className="aurora-container" aria-hidden="true">

@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useAudioReactive } from "./AudioReactiveProvider";
 
 export function ScrollProgress() {
   const barRef = useRef<HTMLDivElement>(null);
+  const { isPlaying, bands } = useAudioReactive();
+  const audioRafRef = useRef<number>(0);
 
   useEffect(() => {
     const bar = barRef.current;
@@ -29,6 +32,33 @@ export function ScrollProgress() {
 
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Energy-reactive glow
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+
+    if (!isPlaying) {
+      bar.style.boxShadow = "";
+      cancelAnimationFrame(audioRafRef.current);
+      return;
+    }
+
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduced) return;
+
+    const animate = () => {
+      const energy = bands.current.energy;
+      bar.style.boxShadow = `0 0 ${energy * 12}px rgba(16, 185, 129, ${energy * 0.5})`;
+      audioRafRef.current = requestAnimationFrame(animate);
+    };
+
+    audioRafRef.current = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(audioRafRef.current);
+  }, [isPlaying, bands]);
 
   return (
     <div

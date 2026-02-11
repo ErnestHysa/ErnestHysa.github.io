@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AudioReactiveProvider } from "@/components/AudioReactiveProvider";
 
 export const metadata: Metadata = {
   title: "Ernest Hysa | Full-Stack Developer",
@@ -94,7 +95,9 @@ export default function RootLayout({
         <a href="#main" className="skip-to-content">
           Skip to content
         </a>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AudioReactiveProvider>{children}</AudioReactiveProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
