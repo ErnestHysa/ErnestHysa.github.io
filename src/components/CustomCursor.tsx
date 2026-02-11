@@ -11,6 +11,7 @@ export function CustomCursor() {
   const pos = useRef({ x: -100, y: -100 });
   const glowPos = useRef({ x: -100, y: -100 });
   const hoveringRef = useRef(false);
+  const visibleRef = useRef(false);
   const [canRender, setCanRender] = useState(false);
 
   /* First effect: detect device capabilities */
@@ -35,8 +36,12 @@ export function CustomCursor() {
       pos.current.y = e.clientY;
 
       dot.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-      dot.style.opacity = "1";
-      glow.style.opacity = "1";
+
+      if (!visibleRef.current) {
+        visibleRef.current = true;
+        dot.style.opacity = "1";
+        glow.style.opacity = "1";
+      }
 
       /* Detect interactive elements */
       const target = e.target as HTMLElement;
@@ -48,6 +53,7 @@ export function CustomCursor() {
     };
 
     const onLeave = () => {
+      visibleRef.current = false;
       dot.style.opacity = "0";
       glow.style.opacity = "0";
     };
