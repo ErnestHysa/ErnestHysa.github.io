@@ -99,8 +99,9 @@ export function BeaglePet() {
   // Click debounce (distinguish click from dblclick)
   const clickTimerRef = useRef(0);
 
-  // Sound init flag
-  const soundInitRef = useRef(false);
+  // Sound function refs — always point to latest imports (survives HMR)
+  const soundRef = useRef({ init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, panting: playPanting, cleanup: cleanupSoundEffects });
+  soundRef.current = { init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, panting: playPanting, cleanup: cleanupSoundEffects };
 
   // --- Sync external state into refs (no visual effect, just ref writes) ---
   useEffect(() => {
@@ -142,10 +143,13 @@ export function BeaglePet() {
 
     setMounted(true);
 
+    // Start loading bark MP3 early (AudioContext may be suspended until first click)
+    soundRef.current.init();
+
     return () => {
       cancelAnimationFrame(rafRef.current);
       clearTimeout(clickTimerRef.current);
-      cleanupSoundEffects();
+      soundRef.current.cleanup();
     };
   }, []);
 
@@ -157,7 +161,7 @@ export function BeaglePet() {
     if (newState === "idle") {
       idleStartRef.current = Date.now();
     }
-    if (newState === "sleep" && prev !== "sleep") playWhimper();
+    if (newState === "sleep" && prev !== "sleep") soundRef.current.whimper();
   }, []);
 
   // --- Cursor tracking ---
@@ -215,11 +219,8 @@ export function BeaglePet() {
       fetchBallRef.current = ball;
       // Don't change state yet — wait for ball to land, then fetch_run kicks in
 
-      if (!soundInitRef.current) {
-        initSoundEffects();
-        soundInitRef.current = true;
-      }
-      playJump();
+      soundRef.current.init(); // Ensure AudioContext resumed during user gesture
+      soundRef.current.jump();
     };
 
     window.addEventListener("dblclick", onDblClick);
@@ -284,7 +285,7 @@ export function BeaglePet() {
           bubblesRef.current.push(
             createBubble("❗", xRef.current + PET_WIDTH / 2, yRef.current)
           );
-          playBark();
+          soundRef.current.bark();
         }
       }
 
@@ -478,7 +479,7 @@ export function BeaglePet() {
           yRef.current = Math.max(0, Math.min(bot, result.y));
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
 
-          if (currentState === "run") playPanting();
+          if (currentState === "run") soundRef.current.panting();
 
           // Arrived at sniff target?
           if (sniffTargetRef.current && result.arrived) {
@@ -579,10 +580,7 @@ export function BeaglePet() {
     if (reducedMotion) return;
     e.preventDefault();
 
-    if (!soundInitRef.current) {
-      initSoundEffects();
-      soundInitRef.current = true;
-    }
+    soundRef.current.init(); // Ensure AudioContext resumed during user gesture
 
     pointerDownRef.current = true;
     pointerStartRef.current = { x: e.clientX, y: e.clientY };
@@ -648,8 +646,8 @@ export function BeaglePet() {
         stateRef.current = trick;
         animElapsedRef.current = 0;
 
-        if (trick === "bark") playBark();
-        else if (trick === "jump") playJump();
+        if (trick === "bark") soundRef.current.bark();
+        else if (trick === "jump") soundRef.current.jump();
 
         if (trick === "jump" || trick === "backflip") {
           bubblesRef.current.push(

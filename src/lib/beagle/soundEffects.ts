@@ -19,25 +19,15 @@ function getCtx(): AudioContext | null {
 export function initSoundEffects(): void {
   const ctx = getCtx();
 
-  // Method 1: HTMLAudioElement — simplest, works in most browsers
+  // Method 1: HTMLAudioElement (simple, reliable)
   if (!barkAudio) {
     barkAudio = new Audio("/audio/bark.mp3");
     barkAudio.volume = 0.3;
     barkAudio.preload = "auto";
     barkAudio.load();
-    // Unlock: attempt silent play during user gesture
-    const origVol = barkAudio.volume;
-    barkAudio.volume = 0;
-    barkAudio.play().then(() => {
-      barkAudio!.pause();
-      barkAudio!.currentTime = 0;
-      barkAudio!.volume = origVol;
-    }).catch(() => {
-      barkAudio!.volume = origVol;
-    });
   }
 
-  // Method 2: Web Audio API buffer — backup if HTMLAudioElement fails
+  // Method 2: Web Audio API buffer (backup)
   if (ctx && !barkBuffer) {
     fetch("/audio/bark.mp3")
       .then(r => {
@@ -93,7 +83,7 @@ function playBarkViaWebAudio(): boolean {
 
 export function playBark(): void {
   // Try HTMLAudioElement first
-  if (barkAudio) {
+  if (barkAudio && !barkAudio.error) {
     barkAudio.currentTime = 0;
     barkAudio.play().catch(() => {
       // HTML Audio failed — try Web Audio buffer
@@ -102,7 +92,7 @@ export function playBark(): void {
     return;
   }
 
-  // Try Web Audio buffer directly
+  // Try Web Audio buffer directly (no oscillator fallback)
   playBarkViaWebAudio();
 }
 
