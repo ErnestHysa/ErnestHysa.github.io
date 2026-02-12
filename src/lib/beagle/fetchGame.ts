@@ -13,9 +13,10 @@ export function createBall(
   const dx = targetX - startX;
   const dy = targetY - startY;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  const time = Math.max(0.5, dist / 400);
+  const time = Math.max(0.6, dist / 350);
 
   const vx = dx / time;
+  // Launch upward with enough arc to look good
   const vy = (dy - 0.5 * ARC_GRAVITY * time * time) / time;
 
   return {
@@ -27,6 +28,7 @@ export function createBall(
     targetY,
     phase: "arc",
     alpha: 1,
+    peaked: false,
   };
 }
 
@@ -35,13 +37,30 @@ export function updateBall(
   dt: number,
 ): FetchBall | null {
   if (ball.phase === "arc") {
+    const prevVy = ball.vy;
     ball.vy += ARC_GRAVITY * dt;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
 
-    // Landed when past target Y or hit bottom
-    if (ball.y >= ball.targetY || ball.y >= window.innerHeight - BALL_RADIUS) {
+    // Detect peak: velocity changed from upward (negative) to downward (positive)
+    if (prevVy < 0 && ball.vy >= 0) {
+      ball.peaked = true;
+    }
+
+    // Only land after the ball has peaked and is descending
+    const canLand = ball.peaked && ball.vy > 0;
+
+    if (canLand && (ball.y >= ball.targetY || ball.y >= window.innerHeight - BALL_RADIUS)) {
       ball.y = Math.min(ball.targetY, window.innerHeight - BALL_RADIUS);
+      ball.x = Math.min(Math.max(ball.x, BALL_RADIUS), window.innerWidth - BALL_RADIUS);
+      ball.phase = "landed";
+      ball.vx = 0;
+      ball.vy = 0;
+    }
+
+    // Safety: if ball goes way off screen, force land
+    if (ball.y > window.innerHeight + 100) {
+      ball.y = window.innerHeight - BALL_RADIUS;
       ball.x = Math.min(Math.max(ball.x, BALL_RADIUS), window.innerWidth - BALL_RADIUS);
       ball.phase = "landed";
       ball.vx = 0;

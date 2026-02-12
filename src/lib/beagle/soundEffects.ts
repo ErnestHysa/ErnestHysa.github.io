@@ -1,4 +1,6 @@
 let audioCtx: AudioContext | null = null;
+let barkBuffer: AudioBuffer | null = null;
+let barkLoading = false;
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {
@@ -14,8 +16,26 @@ function getCtx(): AudioContext | null {
   return audioCtx;
 }
 
+function loadBarkSample(): void {
+  if (barkBuffer || barkLoading) return;
+  const ctx = getCtx();
+  if (!ctx) return;
+  barkLoading = true;
+
+  fetch("/audio/bark.mp3")
+    .then((res) => res.arrayBuffer())
+    .then((buf) => ctx.decodeAudioData(buf))
+    .then((decoded) => {
+      barkBuffer = decoded;
+    })
+    .catch(() => {
+      barkLoading = false;
+    });
+}
+
 export function initSoundEffects(): void {
   getCtx();
+  loadBarkSample();
 }
 
 function playTone(
@@ -45,8 +65,22 @@ function playTone(
 }
 
 export function playBark(): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+
+  if (barkBuffer) {
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = barkBuffer;
+    gain.gain.value = 0.3;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    return;
+  }
+
+  // Fallback if MP3 hasn't loaded yet
   playTone(600, 400, 0.12, "square", 0.015);
-  setTimeout(() => playTone(550, 350, 0.1, "square", 0.012), 130);
 }
 
 export function playJump(): void {
@@ -112,4 +146,6 @@ export function cleanupSoundEffects(): void {
     audioCtx.close();
     audioCtx = null;
   }
+  barkBuffer = null;
+  barkLoading = false;
 }

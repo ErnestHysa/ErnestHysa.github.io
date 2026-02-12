@@ -376,9 +376,10 @@ export function BeaglePet() {
         }
 
         // --- Targeting ---
+        // Dog stays at bottom during normal behavior — only follow cursor X
         if (cursorActive) {
           targetXRef.current = cursorXRef.current;
-          targetYRef.current = cursorYRef.current;
+          targetYRef.current = bot;
         } else if (musicActive && (state === "idle" || state === "sit" || state === "sleep" || state === "walk")) {
           if (Math.abs(xRef.current - paceTargetRef.current) < CLOSE_THRESHOLD) {
             paceTargetRef.current = pickPaceTarget();
@@ -393,10 +394,8 @@ export function BeaglePet() {
           targetYRef.current = bot;
         }
 
-        // 2D distance
-        const dx = targetXRef.current - xRef.current;
-        const dy = targetYRef.current - yRef.current;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        // X-axis distance for state transitions (dog stays at bottom)
+        const dist = Math.abs(targetXRef.current - xRef.current);
 
         // --- State transitions ---
         if (cursorActive) {

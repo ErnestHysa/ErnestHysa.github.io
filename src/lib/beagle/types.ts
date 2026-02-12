@@ -49,6 +49,7 @@ export interface FetchBall {
   targetY: number;
   phase: "arc" | "landed" | "fade";
   alpha: number;
+  peaked: boolean;
 }
 
 export interface Vec2 {
