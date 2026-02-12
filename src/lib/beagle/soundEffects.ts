@@ -43,7 +43,7 @@ export function initSoundEffects(): void {
   // Walk: looping HTMLAudioElement
   if (!walkAudio) {
     walkAudio = new Audio("/audio/walk.mp3");
-    walkAudio.volume = 0.12;
+    walkAudio.volume = 0.06;
     walkAudio.loop = true;
     walkAudio.preload = "auto";
     walkAudio.load();
@@ -52,7 +52,7 @@ export function initSoundEffects(): void {
   // Breathe: looping HTMLAudioElement layered with walk
   if (!breatheAudio) {
     breatheAudio = new Audio("/audio/breathe.mp3");
-    breatheAudio.volume = 0.06;
+    breatheAudio.volume = 0.03;
     breatheAudio.loop = true;
     breatheAudio.preload = "auto";
     breatheAudio.load();
@@ -133,8 +133,8 @@ export function stopWalking(): void {
 
 /** Adjust volume blend: false = walk (paws louder, breathing subtle), true = run (breathing heavier) */
 export function setRunning(running: boolean): void {
-  if (walkAudio) walkAudio.volume = running ? 0.15 : 0.12;
-  if (breatheAudio) breatheAudio.volume = running ? 0.14 : 0.06;
+  if (walkAudio) walkAudio.volume = running ? 0.075 : 0.06;
+  if (breatheAudio) breatheAudio.volume = running ? 0.07 : 0.03;
 }
 
 export function playJump(): void {
