@@ -1,6 +1,7 @@
 let audioCtx: AudioContext | null = null;
 let barkAudio: HTMLAudioElement | null = null;
 let barkBuffer: AudioBuffer | null = null;
+let walkAudio: HTMLAudioElement | null = null;
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {
@@ -19,7 +20,7 @@ function getCtx(): AudioContext | null {
 export function initSoundEffects(): void {
   const ctx = getCtx();
 
-  // Method 1: HTMLAudioElement (simple, reliable)
+  // Bark: HTMLAudioElement (primary) + Web Audio buffer (backup)
   if (!barkAudio) {
     barkAudio = new Audio("/audio/bark.mp3");
     barkAudio.volume = 0.3;
@@ -27,7 +28,6 @@ export function initSoundEffects(): void {
     barkAudio.load();
   }
 
-  // Method 2: Web Audio API buffer (backup)
   if (ctx && !barkBuffer) {
     fetch("/audio/bark.mp3")
       .then(r => {
@@ -37,6 +37,15 @@ export function initSoundEffects(): void {
       .then(buf => ctx.decodeAudioData(buf))
       .then(decoded => { barkBuffer = decoded; })
       .catch(() => {});
+  }
+
+  // Walk: looping HTMLAudioElement
+  if (!walkAudio) {
+    walkAudio = new Audio("/audio/walk.mp3");
+    walkAudio.volume = 0.15;
+    walkAudio.loop = true;
+    walkAudio.preload = "auto";
+    walkAudio.load();
   }
 }
 
@@ -82,18 +91,27 @@ function playBarkViaWebAudio(): boolean {
 }
 
 export function playBark(): void {
-  // Try HTMLAudioElement first
   if (barkAudio && !barkAudio.error) {
     barkAudio.currentTime = 0;
     barkAudio.play().catch(() => {
-      // HTML Audio failed — try Web Audio buffer
       playBarkViaWebAudio();
     });
     return;
   }
-
-  // Try Web Audio buffer directly (no oscillator fallback)
   playBarkViaWebAudio();
+}
+
+export function startWalking(): void {
+  if (walkAudio && walkAudio.paused) {
+    walkAudio.play().catch(() => {});
+  }
+}
+
+export function stopWalking(): void {
+  if (walkAudio && !walkAudio.paused) {
+    walkAudio.pause();
+    walkAudio.currentTime = 0;
+  }
 }
 
 export function playJump(): void {
@@ -129,30 +147,6 @@ export function playWhimper(): void {
   lfo.stop(ctx.currentTime + 0.3);
 }
 
-let lastPantTime = 0;
-export function playPanting(): void {
-  const now = Date.now();
-  if (now - lastPantTime < 2000) return;
-  lastPantTime = now;
-
-  const ctx = getCtx();
-  if (!ctx) return;
-
-  for (let i = 0; i < 3; i++) {
-    const t = ctx.currentTime + i * 0.12;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(i % 2 === 0 ? 400 : 300, t);
-    gain.gain.setValueAtTime(0.01, t);
-    gain.gain.linearRampToValueAtTime(0, t + 0.08);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.08);
-  }
-}
-
 export function cleanupSoundEffects(): void {
   if (audioCtx) {
     audioCtx.close();
@@ -162,6 +156,11 @@ export function cleanupSoundEffects(): void {
     barkAudio.pause();
     barkAudio.src = "";
     barkAudio = null;
+  }
+  if (walkAudio) {
+    walkAudio.pause();
+    walkAudio.src = "";
+    walkAudio = null;
   }
   barkBuffer = null;
 }

@@ -15,7 +15,7 @@ import {
   createBubble, updateBubbles, drawBubbles,
   shouldEmitPaw, createPawPrint, updatePawPrints, drawPawPrints,
 } from "../lib/beagle/particles";
-import { initSoundEffects, playBark, playJump, playWhimper, cleanupSoundEffects } from "../lib/beagle/soundEffects";
+import { initSoundEffects, playBark, playJump, playWhimper, startWalking, stopWalking, cleanupSoundEffects } from "../lib/beagle/soundEffects";
 import { createBall, updateBall, drawBall } from "../lib/beagle/fetchGame";
 import { shouldSniff, markSniffed, findNearbyElement } from "../lib/beagle/sniffBehavior";
 
@@ -102,9 +102,12 @@ export function BeaglePet() {
   // Click debounce (distinguish click from dblclick)
   const clickTimerRef = useRef(0);
 
+  // Walking sound state
+  const isWalkingSoundRef = useRef(false);
+
   // Sound function refs — always point to latest imports (survives HMR)
-  const soundRef = useRef({ init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, cleanup: cleanupSoundEffects });
-  soundRef.current = { init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, cleanup: cleanupSoundEffects };
+  const soundRef = useRef({ init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, startWalk: startWalking, stopWalk: stopWalking, cleanup: cleanupSoundEffects });
+  soundRef.current = { init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, startWalk: startWalking, stopWalk: stopWalking, cleanup: cleanupSoundEffects };
 
   // --- Sync external state into refs (no visual effect, just ref writes) ---
   useEffect(() => {
@@ -489,6 +492,18 @@ export function BeaglePet() {
             animElapsedRef.current = 0;
           }
         }
+      }
+
+      // === WALKING SOUND ===
+      const shouldPlayWalk = stateRef.current === "walk" || stateRef.current === "run"
+        || stateRef.current === "fetch_run" || stateRef.current === "fetch_return"
+        || stateRef.current === "return_to_bottom";
+      if (shouldPlayWalk && !isWalkingSoundRef.current) {
+        soundRef.current.startWalk();
+        isWalkingSoundRef.current = true;
+      } else if (!shouldPlayWalk && isWalkingSoundRef.current) {
+        soundRef.current.stopWalk();
+        isWalkingSoundRef.current = false;
       }
 
       // === ANIMATION FRAME ===
