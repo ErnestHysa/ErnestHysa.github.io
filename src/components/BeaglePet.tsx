@@ -2,60 +2,134 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAudioReactive } from "./AudioReactiveProvider";
+import { useTheme } from "./ThemeProvider";
+import type { PetState, EmotionBubble, PawPrint, FetchBall } from "../lib/beagle/types";
+import {
+  PET_HEIGHT, PET_WIDTH, FRAME_STEP,
+  WALK_SPEED, RUN_SPEED, CLOSE_THRESHOLD, RUN_THRESHOLD,
+  SIT_DELAY, SLEEP_DELAY, RETURN_TO_BOTTOM_MARGIN,
+  ANIM_CONFIG, TRICK_CYCLE,
+} from "../lib/beagle/sprites";
+import { move2D, updateToss, returnToBottom, type TossState } from "../lib/beagle/physics";
+import {
+  createBubble, updateBubbles, drawBubbles,
+  shouldEmitPaw, createPawPrint, updatePawPrints, drawPawPrints,
+} from "../lib/beagle/particles";
+import { initSoundEffects, playBark, playJump, playWhimper, playPanting, cleanupSoundEffects } from "../lib/beagle/soundEffects";
+import { createBall, updateBall, drawBall } from "../lib/beagle/fetchGame";
+import { shouldSniff, markSniffed, findNearbyElement } from "../lib/beagle/sniffBehavior";
 
-type PetState = "idle" | "walk" | "run" | "jump" | "sit" | "sleep";
+// --- Trick / non-interruptible states ---
+const TRICK_STATES: Set<PetState> = new Set(["jump", "roll", "bark", "backflip", "tumble"]);
+const NON_INTERRUPT_STATES: Set<PetState> = new Set([
+  "jump", "roll", "bark", "backflip", "tumble", "drag", "toss",
+  "fetch_run", "fetch_return", "sniff",
+]);
 
-interface AnimConfig {
-  frames: number;
-  duration: number;
-  loop: boolean;
-  sprite: string;
-}
-
-const ANIM_CONFIG: Record<PetState, AnimConfig> = {
-  idle:  { frames: 4, duration: 1.6, loop: true,  sprite: "/sprites/idle.png" },
-  walk:  { frames: 8, duration: 0.8, loop: true,  sprite: "/sprites/walk.png" },
-  run:   { frames: 8, duration: 0.5, loop: true,  sprite: "/sprites/run.png" },
-  jump:  { frames: 4, duration: 0.4, loop: false, sprite: "/sprites/jump.png" },
-  sit:   { frames: 4, duration: 0.8, loop: false, sprite: "/sprites/sit.png" },
-  sleep: { frames: 4, duration: 2.0, loop: true,  sprite: "/sprites/sleep.png" },
-};
-
-const PET_HEIGHT = 64;
-const PET_WIDTH = Math.round(PET_HEIGHT * (300 / 280));
-const FRAME_STEP = PET_HEIGHT * (300 / 280); // precise float for bg-position stepping
-const WALK_SPEED = 80;
-const RUN_SPEED = 180;
-const CLOSE_THRESHOLD = 30;
-const RUN_THRESHOLD = 250;
-const SIT_DELAY = 8000;
-const SLEEP_DELAY = 15000;
+// --- Drag detection ---
+const DRAG_THRESHOLD = 5;
+const POINTER_HISTORY_SIZE = 5;
 
 export function BeaglePet() {
   const { isPlaying } = useAudioReactive();
+  const { theme } = useTheme();
   const [reducedMotion, setReducedMotion] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // DOM refs
   const elRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Position + state
   const stateRef = useRef<PetState>("idle");
   const xRef = useRef(0);
+  const yRef = useRef(0);
   const targetXRef = useRef(0);
+  const targetYRef = useRef(0);
   const facingLeftRef = useRef(false);
   const cursorXRef = useRef(0);
+  const cursorYRef = useRef(0);
   const lastCursorMoveRef = useRef(0);
-  const jumpTimerRef = useRef(0);
   const rafRef = useRef(0);
   const lastFrameRef = useRef(0);
-  const isPlayingRef = useRef(false);
-  const isMobileRef = useRef(false);
-  const paceTargetRef = useRef(0);
   const animElapsedRef = useRef(0);
   const currentSpriteRef = useRef("");
+  const isMobileRef = useRef(false);
 
+  // Synced props
+  const isPlayingRef = useRef(false);
+  const prevThemeRef = useRef(theme);
+
+  // Pacing (music / mobile)
+  const paceTargetRef = useRef(0);
+
+  // Idle timers
+  const idleStartRef = useRef(0);
+
+  // Trick cycle
+  const trickIndexRef = useRef(0);
+
+  // Click vs drag
+  const pointerDownRef = useRef(false);
+  const pointerStartRef = useRef({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+  const pointerHistoryRef = useRef<{ x: number; y: number; t: number }[]>([]);
+
+  // Toss physics
+  const tossRef = useRef<TossState>({ vx: 0, vy: 0 });
+
+  // Scroll
+  const lastScrollYRef = useRef(0);
+  const lastScrollTimeRef = useRef(0);
+
+  // Particles
+  const bubblesRef = useRef<EmotionBubble[]>([]);
+  const pawsRef = useRef<PawPrint[]>([]);
+  const lastPawPosRef = useRef({ x: 0, y: 0 });
+  const pawSideRef = useRef<"left" | "right">("left");
+
+  // Fetch game
+  const fetchBallRef = useRef<FetchBall | null>(null);
+
+  // Sniff
+  const sniffTargetRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Click debounce (distinguish click from dblclick)
+  const clickTimerRef = useRef(0);
+
+  // Sound init flag
+  const soundInitRef = useRef(false);
+
+  // Sunglasses flag
+  const showSunglassesRef = useRef(theme === "light");
+
+  // --- Sync external state ---
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
+  useEffect(() => {
+    showSunglassesRef.current = theme === "light";
+  }, [theme]);
+
+  // --- Theme change reaction ---
+  useEffect(() => {
+    if (!mounted || reducedMotion) return;
+    if (prevThemeRef.current !== theme) {
+      prevThemeRef.current = theme;
+      // Bark + startled bubble
+      if (!TRICK_STATES.has(stateRef.current) && stateRef.current !== "drag" && stateRef.current !== "toss") {
+        stateRef.current = "bark";
+        animElapsedRef.current = 0;
+        bubblesRef.current.push(
+          createBubble("❗", xRef.current + PET_WIDTH / 2, yRef.current)
+        );
+        playBark();
+      }
+    }
+  }, [theme, mounted, reducedMotion]);
+
+  // --- Init ---
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(mq.matches);
@@ -63,24 +137,44 @@ export function BeaglePet() {
     isMobileRef.current =
       "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
+    const bottomY = window.innerHeight - PET_HEIGHT;
     xRef.current = window.innerWidth / 2;
+    yRef.current = bottomY;
     cursorXRef.current = window.innerWidth / 2;
+    cursorYRef.current = bottomY;
     targetXRef.current = window.innerWidth / 2;
+    targetYRef.current = bottomY;
     lastCursorMoveRef.current = Date.now();
+    idleStartRef.current = Date.now();
+    lastPawPosRef.current = { x: xRef.current, y: yRef.current };
     setMounted(true);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
-      clearTimeout(jumpTimerRef.current);
+      clearTimeout(clickTimerRef.current);
+      cleanupSoundEffects();
     };
   }, []);
 
-  // Cursor tracking
+  const setStateRef = useCallback((newState: PetState) => {
+    if (stateRef.current === newState) return;
+    const prev = stateRef.current;
+    stateRef.current = newState;
+    animElapsedRef.current = 0;
+    if (newState === "idle") {
+      idleStartRef.current = Date.now();
+    }
+    // Sound effects
+    if (newState === "sleep" && prev !== "sleep") playWhimper();
+  }, []);
+
+  // --- Cursor tracking ---
   useEffect(() => {
     if (reducedMotion || !mounted) return;
 
     const onMouseMove = (e: MouseEvent) => {
       cursorXRef.current = e.clientX;
+      cursorYRef.current = e.clientY;
       lastCursorMoveRef.current = Date.now();
     };
 
@@ -88,30 +182,90 @@ export function BeaglePet() {
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, [reducedMotion, mounted]);
 
-  const setStateRef = useCallback((newState: PetState) => {
-    if (stateRef.current === newState) return;
-    stateRef.current = newState;
-    animElapsedRef.current = 0;
-  }, []);
+  // --- Scroll tracking ---
+  useEffect(() => {
+    if (reducedMotion || !mounted) return;
 
-  // Main rAF loop — handles movement, state transitions, AND frame stepping
+    const onScroll = () => {
+      const now = Date.now();
+      const dt = (now - lastScrollTimeRef.current) / 1000;
+      if (dt > 0) {
+        const vel = Math.abs(window.scrollY - lastScrollYRef.current) / dt;
+        if (vel > 2000 && !NON_INTERRUPT_STATES.has(stateRef.current)) {
+          stateRef.current = "tumble";
+          animElapsedRef.current = 0;
+        }
+      }
+      lastScrollYRef.current = window.scrollY;
+      lastScrollTimeRef.current = now;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [reducedMotion, mounted]);
+
+  // --- Double-click for fetch ---
+  useEffect(() => {
+    if (reducedMotion || !mounted) return;
+
+    const onDblClick = (e: MouseEvent) => {
+      if (fetchBallRef.current) return;
+      if (NON_INTERRUPT_STATES.has(stateRef.current)) return;
+
+      clearTimeout(clickTimerRef.current);
+
+      const ball = createBall(
+        xRef.current + PET_WIDTH / 2,
+        yRef.current + PET_HEIGHT / 2,
+        e.clientX,
+        e.clientY,
+      );
+      fetchBallRef.current = ball;
+      stateRef.current = "idle";
+      animElapsedRef.current = 0;
+
+      if (!soundInitRef.current) {
+        initSoundEffects();
+        soundInitRef.current = true;
+      }
+      playJump();
+    };
+
+    window.addEventListener("dblclick", onDblClick);
+    return () => window.removeEventListener("dblclick", onDblClick);
+  }, [reducedMotion, mounted]);
+
+  // --- Canvas resize ---
+  useEffect(() => {
+    if (!mounted) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [mounted]);
+
+  // --- Main rAF loop ---
   useEffect(() => {
     if (reducedMotion || !mounted) return;
 
     const el = elRef.current;
-    if (!el) return;
+    const canvas = canvasRef.current;
+    if (!el || !canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const bottomY = () => window.innerHeight - PET_HEIGHT;
 
     const pickPaceTarget = () => {
       const margin = 100;
       const maxX = window.innerWidth - PET_WIDTH;
       return Math.max(0, Math.min(maxX, margin + Math.random() * (window.innerWidth - margin * 2)));
-    };
-
-    const clampPaceTarget = () => {
-      const maxX = window.innerWidth - PET_WIDTH;
-      if (paceTargetRef.current > maxX || paceTargetRef.current < 0) {
-        paceTargetRef.current = pickPaceTarget();
-      }
     };
 
     paceTargetRef.current = pickPaceTarget();
@@ -127,44 +281,130 @@ export function BeaglePet() {
       const musicActive = isPlayingRef.current;
       const isMobile = isMobileRef.current;
       const cursorActive = timeSinceCursor < 200;
+      const maxX = window.innerWidth - PET_WIDTH;
+      const bot = bottomY();
 
-      // Clamp pace target on every frame (handles window resize)
-      clampPaceTarget();
-
-      // --- Targeting ---
-      if (state !== "jump") {
-        if (cursorActive) {
-          // Cursor recently moved — follow it (works on any device)
-          targetXRef.current = cursorXRef.current;
-        } else if (
-          musicActive &&
-          (state === "idle" ||
-            state === "sit" ||
-            state === "sleep" ||
-            state === "walk")
-        ) {
-          if (Math.abs(xRef.current - paceTargetRef.current) < CLOSE_THRESHOLD)
-            paceTargetRef.current = pickPaceTarget();
-          targetXRef.current = paceTargetRef.current;
-        } else if (isMobile && !musicActive) {
-          if (Math.abs(xRef.current - paceTargetRef.current) < CLOSE_THRESHOLD)
-            paceTargetRef.current = pickPaceTarget();
-          targetXRef.current = paceTargetRef.current;
+      // === FETCH BALL UPDATE ===
+      if (fetchBallRef.current) {
+        const ball = updateBall(fetchBallRef.current, dt);
+        if (!ball) {
+          fetchBallRef.current = null;
+        } else {
+          fetchBallRef.current = ball;
+          // Transition: ball landed -> dog runs to it
+          if (ball.phase === "landed" && state !== "fetch_run" && state !== "fetch_return") {
+            targetXRef.current = ball.x - PET_WIDTH / 2;
+            targetYRef.current = bot;
+            stateRef.current = "fetch_run";
+            animElapsedRef.current = 0;
+          }
         }
       }
 
-      const dist = Math.abs(xRef.current - targetXRef.current);
-      const direction = targetXRef.current > xRef.current ? 1 : -1;
+      // === STATE MACHINE ===
+      if (state === "drag") {
+        // Follow pointer directly, handled in pointer events
+      } else if (state === "toss") {
+        const result = updateToss(xRef.current, yRef.current, tossRef.current, dt);
+        xRef.current = result.x;
+        yRef.current = result.y;
+        tossRef.current = result.toss;
+        if (result.settled) {
+          setStateRef("return_to_bottom");
+        }
+      } else if (state === "return_to_bottom") {
+        const result = returnToBottom(xRef.current, yRef.current, dt);
+        xRef.current = result.x;
+        yRef.current = result.y;
+        if (result.arrived || Math.abs(yRef.current - bot) < RETURN_TO_BOTTOM_MARGIN) {
+          yRef.current = bot;
+          setStateRef("idle");
+        }
+      } else if (state === "tumble") {
+        // Play roll animation then return to idle
+        const config = ANIM_CONFIG.tumble;
+        if (animElapsedRef.current >= config.duration) {
+          setStateRef("idle");
+        }
+      } else if (state === "fetch_run") {
+        // Sprint to ball
+        if (fetchBallRef.current && fetchBallRef.current.phase === "landed") {
+          const ballX = fetchBallRef.current.x - PET_WIDTH / 2;
+          const result = move2D(xRef.current, yRef.current, ballX, bot, RUN_SPEED * 1.2, dt);
+          xRef.current = result.x;
+          yRef.current = result.y;
+          if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
+          if (result.arrived) {
+            // Pick up ball
+            fetchBallRef.current.phase = "fade";
+            targetXRef.current = cursorXRef.current;
+            targetYRef.current = bot;
+            stateRef.current = "fetch_return";
+            animElapsedRef.current = 0;
+          }
+        } else if (!fetchBallRef.current) {
+          setStateRef("idle");
+        }
+      } else if (state === "fetch_return") {
+        const result = move2D(xRef.current, yRef.current, cursorXRef.current, bot, WALK_SPEED * 1.2, dt);
+        xRef.current = result.x;
+        yRef.current = result.y;
+        if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
+        if (result.arrived) {
+          bubblesRef.current.push(createBubble("🐾", xRef.current + PET_WIDTH / 2, yRef.current));
+          setStateRef("idle");
+        }
+      } else if (state === "sniff") {
+        const config = ANIM_CONFIG.sniff;
+        if (animElapsedRef.current >= config.duration) {
+          bubblesRef.current.push(createBubble("👃", xRef.current + PET_WIDTH / 2, yRef.current));
+          setStateRef("idle");
+        }
+      } else if (TRICK_STATES.has(state)) {
+        // Trick / jump in progress — wait for animation to finish
+        const config = ANIM_CONFIG[state];
+        if (!config.loop && animElapsedRef.current >= config.duration) {
+          setStateRef("idle");
+          lastCursorMoveRef.current = Date.now();
+        }
+      } else {
+        // IDLE / WALK / RUN / SIT / SLEEP — normal behavior
 
-      // --- State transitions ---
-      if (state !== "jump") {
+        // Clamp pace target
+        if (paceTargetRef.current > maxX || paceTargetRef.current < 0) {
+          paceTargetRef.current = pickPaceTarget();
+        }
+
+        // --- Targeting ---
+        if (cursorActive) {
+          targetXRef.current = cursorXRef.current;
+          targetYRef.current = cursorYRef.current;
+        } else if (musicActive && (state === "idle" || state === "sit" || state === "sleep" || state === "walk")) {
+          if (Math.abs(xRef.current - paceTargetRef.current) < CLOSE_THRESHOLD) {
+            paceTargetRef.current = pickPaceTarget();
+          }
+          targetXRef.current = paceTargetRef.current;
+          targetYRef.current = bot;
+        } else if (isMobile && !musicActive) {
+          if (Math.abs(xRef.current - paceTargetRef.current) < CLOSE_THRESHOLD) {
+            paceTargetRef.current = pickPaceTarget();
+          }
+          targetXRef.current = paceTargetRef.current;
+          targetYRef.current = bot;
+        }
+
+        // 2D distance
+        const dx = targetXRef.current - xRef.current;
+        const dy = targetYRef.current - yRef.current;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // --- State transitions ---
         if (cursorActive) {
           if (dist > RUN_THRESHOLD) {
             setStateRef("run");
           } else if (dist > CLOSE_THRESHOLD) {
             setStateRef("walk");
           } else if (state === "sit" || state === "sleep") {
-            // Wake up when cursor moves, even if close
             setStateRef("idle");
           } else if (state === "walk" || state === "run") {
             setStateRef("idle");
@@ -189,55 +429,131 @@ export function BeaglePet() {
             setStateRef("sleep");
           }
         }
+
+        // --- Return to bottom when idle and off-bottom ---
+        if (state === "idle" && Math.abs(yRef.current - bot) > RETURN_TO_BOTTOM_MARGIN && !cursorActive) {
+          const idleDur = (now - idleStartRef.current) / 1000;
+          if (idleDur > 3) {
+            setStateRef("return_to_bottom");
+          }
+        }
+
+        // --- Sniff behavior (desktop only) ---
+        if (!isMobile && state === "idle" && Math.abs(yRef.current - bot) < RETURN_TO_BOTTOM_MARGIN) {
+          const idleDur = (now - idleStartRef.current) / 1000;
+          if (shouldSniff(idleDur)) {
+            const target = findNearbyElement(xRef.current);
+            if (target) {
+              sniffTargetRef.current = target;
+              targetXRef.current = target.x;
+              targetYRef.current = target.y;
+              markSniffed();
+              setStateRef("walk");
+              // Will transition to sniff when arrives
+            }
+          }
+        }
+
+        // --- Movement ---
+        const currentState = stateRef.current;
+        if (currentState === "walk" || currentState === "run") {
+          const speed = currentState === "run" ? RUN_SPEED : WALK_SPEED;
+          const result = move2D(xRef.current, yRef.current, targetXRef.current, targetYRef.current, speed, dt);
+          xRef.current = Math.max(0, Math.min(maxX, result.x));
+          yRef.current = Math.max(0, Math.min(bot, result.y));
+          if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
+
+          // Running panting sound
+          if (currentState === "run") playPanting();
+
+          // Check if arrived at sniff target
+          if (sniffTargetRef.current && result.arrived) {
+            sniffTargetRef.current = null;
+            stateRef.current = "sniff";
+            animElapsedRef.current = 0;
+          }
+        }
       }
 
-      // --- Movement ---
-      if (state === "walk" || state === "run") {
-        const speed = state === "run" ? RUN_SPEED : WALK_SPEED;
-        xRef.current += speed * dt * direction;
-        xRef.current = Math.max(
-          0,
-          Math.min(window.innerWidth - PET_WIDTH, xRef.current)
-        );
-        facingLeftRef.current = direction < 0;
-      }
-
-      // --- Animation frame stepping ---
+      // === ANIMATION FRAME ===
       const config = ANIM_CONFIG[stateRef.current];
       animElapsedRef.current += dt;
 
       let frameIndex: number;
       if (config.loop) {
-        const progress =
-          (animElapsedRef.current % config.duration) / config.duration;
+        const progress = (animElapsedRef.current % config.duration) / config.duration;
         frameIndex = Math.floor(progress * config.frames) % config.frames;
       } else {
-        const progress = Math.min(
-          animElapsedRef.current / config.duration,
-          1 - 1e-6
-        );
+        const progress = Math.min(animElapsedRef.current / config.duration, 1 - 1e-6);
         frameIndex = Math.floor(progress * config.frames);
       }
 
       const bgPosX = -(frameIndex * FRAME_STEP);
 
-      // --- Apply to DOM directly (avoid React re-renders in rAF) ---
+      // === APPLY TO DOM ===
       const sprite = config.sprite;
       if (currentSpriteRef.current !== sprite) {
         el.style.backgroundImage = `url(${sprite})`;
         currentSpriteRef.current = sprite;
       }
       el.style.left = `${xRef.current}px`;
+      el.style.top = `${yRef.current}px`;
       el.style.backgroundPositionX = `${bgPosX}px`;
       el.style.transform = facingLeftRef.current ? "scaleX(-1)" : "none";
+
+      // === EMOTION BUBBLES ===
+      const curState = stateRef.current;
+      // Music notes while music plays and walking
+      if (musicActive && (curState === "walk" || curState === "run") && Math.random() < 0.02) {
+        bubblesRef.current.push(
+          createBubble("🎵", xRef.current + PET_WIDTH / 2, yRef.current)
+        );
+      }
+      // Zzz while sleeping
+      if (curState === "sleep" && Math.random() < 0.015) {
+        bubblesRef.current.push(
+          createBubble("💤", xRef.current + PET_WIDTH / 2, yRef.current)
+        );
+      }
+
+      // === PAW PRINTS ===
+      if (curState === "walk" || curState === "run" || curState === "fetch_run" || curState === "fetch_return") {
+        if (shouldEmitPaw(lastPawPosRef.current.x, lastPawPosRef.current.y, xRef.current, yRef.current)) {
+          const side = pawSideRef.current;
+          pawsRef.current.push(
+            createPawPrint(xRef.current + PET_WIDTH / 2, yRef.current + PET_HEIGHT, side, facingLeftRef.current)
+          );
+          pawSideRef.current = side === "left" ? "right" : "left";
+          lastPawPosRef.current = { x: xRef.current, y: yRef.current };
+        }
+      }
+
+      // === CANVAS DRAW ===
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      updatePawPrints(pawsRef.current, dt);
+      drawPawPrints(ctx, pawsRef.current);
+
+      updateBubbles(bubblesRef.current, dt);
+      drawBubbles(ctx, bubblesRef.current);
+
+      if (fetchBallRef.current) {
+        drawBall(ctx, fetchBallRef.current);
+      }
+
+      // Sunglasses in light mode
+      if (showSunglassesRef.current && curState !== "sleep" && curState !== "drag" && curState !== "toss") {
+        drawSunglasses(ctx, xRef.current, yRef.current, facingLeftRef.current);
+      }
 
       rafRef.current = requestAnimationFrame(loop);
     };
 
-    // Set initial sprite and position before first frame
+    // Init
     const initConfig = ANIM_CONFIG[stateRef.current];
     el.style.backgroundImage = `url(${initConfig.sprite})`;
     el.style.left = `${xRef.current}px`;
+    el.style.top = `${yRef.current}px`;
     currentSpriteRef.current = initConfig.sprite;
     lastFrameRef.current = 0;
 
@@ -245,16 +561,96 @@ export function BeaglePet() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [reducedMotion, mounted, setStateRef]);
 
-  // Click / tap → jump
-  const handleInteraction = useCallback(() => {
-    if (reducedMotion || stateRef.current === "jump") return;
-    setStateRef("jump");
-    clearTimeout(jumpTimerRef.current);
-    jumpTimerRef.current = window.setTimeout(() => {
-      setStateRef("idle");
-      lastCursorMoveRef.current = Date.now();
-    }, 400);
-  }, [reducedMotion, setStateRef]);
+  // --- Pointer events (click cycle + drag/toss) ---
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (reducedMotion) return;
+    e.preventDefault();
+
+    // Init sounds on first interaction
+    if (!soundInitRef.current) {
+      initSoundEffects();
+      soundInitRef.current = true;
+    }
+
+    pointerDownRef.current = true;
+    pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    isDraggingRef.current = false;
+    pointerHistoryRef.current = [{ x: e.clientX, y: e.clientY, t: Date.now() }];
+
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [reducedMotion]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!pointerDownRef.current) return;
+
+    const dx = e.clientX - pointerStartRef.current.x;
+    const dy = e.clientY - pointerStartRef.current.y;
+
+    if (!isDraggingRef.current && Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+      isDraggingRef.current = true;
+      clearTimeout(clickTimerRef.current);
+      stateRef.current = "drag";
+      animElapsedRef.current = 0;
+    }
+
+    if (isDraggingRef.current) {
+      xRef.current = e.clientX - PET_WIDTH / 2;
+      yRef.current = e.clientY - PET_HEIGHT / 2;
+
+      // Track history for toss velocity
+      const hist = pointerHistoryRef.current;
+      hist.push({ x: e.clientX, y: e.clientY, t: Date.now() });
+      if (hist.length > POINTER_HISTORY_SIZE) hist.shift();
+    }
+  }, []);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!pointerDownRef.current) return;
+    pointerDownRef.current = false;
+
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+
+    if (isDraggingRef.current) {
+      // Toss
+      isDraggingRef.current = false;
+      const hist = pointerHistoryRef.current;
+      if (hist.length >= 2) {
+        const first = hist[0];
+        const last = hist[hist.length - 1];
+        const dt = Math.max((last.t - first.t) / 1000, 0.016);
+        tossRef.current = {
+          vx: (last.x - first.x) / dt,
+          vy: (last.y - first.y) / dt,
+        };
+      } else {
+        tossRef.current = { vx: 0, vy: 0 };
+      }
+      stateRef.current = "toss";
+      animElapsedRef.current = 0;
+    } else {
+      // Click — use debounce to distinguish from dblclick
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = window.setTimeout(() => {
+        if (NON_INTERRUPT_STATES.has(stateRef.current)) return;
+
+        const trick = TRICK_CYCLE[trickIndexRef.current % TRICK_CYCLE.length];
+        trickIndexRef.current++;
+        stateRef.current = trick;
+        animElapsedRef.current = 0;
+
+        // Sound
+        if (trick === "bark") playBark();
+        else if (trick === "jump") playJump();
+
+        // Bubble
+        if (trick === "jump" || trick === "backflip") {
+          bubblesRef.current.push(
+            createBubble("❤️", xRef.current + PET_WIDTH / 2, yRef.current)
+          );
+        }
+      }, 250);
+    }
+  }, []);
 
   if (!mounted) return null;
 
@@ -281,26 +677,72 @@ export function BeaglePet() {
   }
 
   return (
-    <div
-      ref={elRef}
-      onClick={handleInteraction}
-      onTouchStart={(e) => {
-        e.preventDefault();
-        handleInteraction();
-      }}
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        zIndex: 47,
-        width: PET_WIDTH,
-        height: PET_HEIGHT,
-        backgroundSize: `auto ${PET_HEIGHT}px`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "0 0",
-        imageRendering: "pixelated",
-        cursor: "pointer",
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 46,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        ref={elRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          zIndex: 47,
+          width: PET_WIDTH,
+          height: PET_HEIGHT,
+          backgroundSize: `auto ${PET_HEIGHT}px`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "0 0",
+          imageRendering: "pixelated",
+          cursor: "pointer",
+          touchAction: "none",
+        }}
+      />
+    </>
   );
+}
+
+// --- Sunglasses drawing ---
+function drawSunglasses(
+  ctx: CanvasRenderingContext2D,
+  dogX: number,
+  dogY: number,
+  facingLeft: boolean,
+): void {
+  ctx.save();
+
+  // Position relative to dog sprite — roughly at the face
+  const faceOffsetX = facingLeft ? PET_WIDTH * 0.3 : PET_WIDTH * 0.55;
+  const faceOffsetY = PET_HEIGHT * 0.3;
+  const cx = dogX + faceOffsetX;
+  const cy = dogY + faceOffsetY;
+
+  ctx.translate(cx, cy);
+  if (facingLeft) ctx.scale(-1, 1);
+
+  ctx.fillStyle = "#1a1a1a";
+
+  // Left lens
+  ctx.fillRect(-7, -2, 5, 4);
+  // Right lens
+  ctx.fillRect(2, -2, 5, 4);
+  // Bridge
+  ctx.fillRect(-2, -1, 4, 2);
+  // Arms
+  ctx.fillRect(-8, -1, 2, 1);
+  ctx.fillRect(7, -1, 2, 1);
+
+  ctx.restore();
 }
