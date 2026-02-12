@@ -1,6 +1,5 @@
 let audioCtx: AudioContext | null = null;
-let barkBuffer: AudioBuffer | null = null;
-let barkLoading = false;
+let barkAudio: HTMLAudioElement | null = null;
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {
@@ -16,26 +15,16 @@ function getCtx(): AudioContext | null {
   return audioCtx;
 }
 
-function loadBarkSample(): void {
-  if (barkBuffer || barkLoading) return;
-  const ctx = getCtx();
-  if (!ctx) return;
-  barkLoading = true;
-
-  fetch("/audio/bark.mp3")
-    .then((res) => res.arrayBuffer())
-    .then((buf) => ctx.decodeAudioData(buf))
-    .then((decoded) => {
-      barkBuffer = decoded;
-    })
-    .catch(() => {
-      barkLoading = false;
-    });
-}
-
 export function initSoundEffects(): void {
   getCtx();
-  loadBarkSample();
+  // Preload bark sample as an Audio element — simple, no async decode needed
+  if (!barkAudio) {
+    barkAudio = new Audio("/audio/bark.mp3");
+    barkAudio.preload = "auto";
+    barkAudio.volume = 0.3;
+    // Force the browser to begin buffering
+    barkAudio.load();
+  }
 }
 
 function playTone(
@@ -65,21 +54,14 @@ function playTone(
 }
 
 export function playBark(): void {
-  const ctx = getCtx();
-  if (!ctx) return;
-
-  if (barkBuffer) {
-    const source = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    source.buffer = barkBuffer;
-    gain.gain.value = 0.3;
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.start();
+  if (barkAudio) {
+    // Clone so overlapping barks work, and play immediately
+    const clone = barkAudio.cloneNode() as HTMLAudioElement;
+    clone.volume = 0.3;
+    clone.play().catch(() => {});
     return;
   }
-
-  // Fallback if MP3 hasn't loaded yet
+  // Fallback — should never reach here after init
   playTone(600, 400, 0.12, "square", 0.015);
 }
 
@@ -98,7 +80,6 @@ export function playWhimper(): void {
   osc.frequency.setValueAtTime(800, ctx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.3);
 
-  // Wobble
   const lfo = ctx.createOscillator();
   const lfoGain = ctx.createGain();
   lfo.frequency.value = 8;
@@ -146,6 +127,5 @@ export function cleanupSoundEffects(): void {
     audioCtx.close();
     audioCtx = null;
   }
-  barkBuffer = null;
-  barkLoading = false;
+  barkAudio = null;
 }

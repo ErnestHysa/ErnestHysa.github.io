@@ -31,6 +31,7 @@ const DRAG_THRESHOLD = 5;
 const POINTER_HISTORY_SIZE = 5;
 
 export function BeaglePet() {
+  // Read context values — sync into refs immediately so re-renders don't matter
   const { isPlaying } = useAudioReactive();
   const { theme } = useTheme();
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -56,8 +57,9 @@ export function BeaglePet() {
   const currentSpriteRef = useRef("");
   const isMobileRef = useRef(false);
 
-  // Synced props
+  // Synced props — never read isPlaying/theme directly in rAF, use these refs
   const isPlayingRef = useRef(false);
+  const themeRef = useRef(theme);
   const prevThemeRef = useRef(theme);
 
   // Pacing (music / mobile)
@@ -100,34 +102,17 @@ export function BeaglePet() {
   // Sound init flag
   const soundInitRef = useRef(false);
 
-  // Sunglasses flag
-  const showSunglassesRef = useRef(theme === "light");
-
-  // --- Sync external state ---
+  // --- Sync external state into refs (no visual effect, just ref writes) ---
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
   useEffect(() => {
-    showSunglassesRef.current = theme === "light";
+    themeRef.current = theme;
   }, [theme]);
 
-  // --- Theme change reaction ---
-  useEffect(() => {
-    if (!mounted || reducedMotion) return;
-    if (prevThemeRef.current !== theme) {
-      prevThemeRef.current = theme;
-      // Bark + startled bubble
-      if (!TRICK_STATES.has(stateRef.current) && stateRef.current !== "drag" && stateRef.current !== "toss") {
-        stateRef.current = "bark";
-        animElapsedRef.current = 0;
-        bubblesRef.current.push(
-          createBubble("❗", xRef.current + PET_WIDTH / 2, yRef.current)
-        );
-        playBark();
-      }
-    }
-  }, [theme, mounted, reducedMotion]);
+  // --- Theme change reaction (detected in rAF loop instead to avoid effect timing) ---
+  // Moved to rAF loop to avoid re-render dependency issues.
 
   // --- Init ---
   useEffect(() => {
@@ -147,6 +132,14 @@ export function BeaglePet() {
     lastCursorMoveRef.current = Date.now();
     idleStartRef.current = Date.now();
     lastPawPosRef.current = { x: xRef.current, y: yRef.current };
+
+    // Set initial position on the element before mount to prevent FOUC
+    const el = elRef.current;
+    if (el) {
+      el.style.left = `${xRef.current}px`;
+      el.style.top = `${yRef.current}px`;
+    }
+
     setMounted(true);
 
     return () => {
@@ -164,7 +157,6 @@ export function BeaglePet() {
     if (newState === "idle") {
       idleStartRef.current = Date.now();
     }
-    // Sound effects
     if (newState === "sleep" && prev !== "sleep") playWhimper();
   }, []);
 
@@ -221,8 +213,7 @@ export function BeaglePet() {
         e.clientY,
       );
       fetchBallRef.current = ball;
-      stateRef.current = "idle";
-      animElapsedRef.current = 0;
+      // Don't change state yet — wait for ball to land, then fetch_run kicks in
 
       if (!soundInitRef.current) {
         initSoundEffects();
@@ -275,7 +266,6 @@ export function BeaglePet() {
       const dt = Math.min((timestamp - lastFrameRef.current) / 1000, 0.1);
       lastFrameRef.current = timestamp;
 
-      const state = stateRef.current;
       const now = Date.now();
       const timeSinceCursor = now - lastCursorMoveRef.current;
       const musicActive = isPlayingRef.current;
@@ -283,6 +273,20 @@ export function BeaglePet() {
       const cursorActive = timeSinceCursor < 200;
       const maxX = window.innerWidth - PET_WIDTH;
       const bot = bottomY();
+
+      // === THEME CHANGE DETECTION (done in rAF to avoid React re-render issues) ===
+      const currentTheme = themeRef.current;
+      if (prevThemeRef.current !== currentTheme) {
+        prevThemeRef.current = currentTheme;
+        if (!TRICK_STATES.has(stateRef.current) && stateRef.current !== "drag" && stateRef.current !== "toss") {
+          stateRef.current = "bark";
+          animElapsedRef.current = 0;
+          bubblesRef.current.push(
+            createBubble("❗", xRef.current + PET_WIDTH / 2, yRef.current)
+          );
+          playBark();
+        }
+      }
 
       // === FETCH BALL UPDATE ===
       if (fetchBallRef.current) {
@@ -292,7 +296,7 @@ export function BeaglePet() {
         } else {
           fetchBallRef.current = ball;
           // Transition: ball landed -> dog runs to it
-          if (ball.phase === "landed" && state !== "fetch_run" && state !== "fetch_return") {
+          if (ball.phase === "landed" && stateRef.current !== "fetch_run" && stateRef.current !== "fetch_return") {
             targetXRef.current = ball.x - PET_WIDTH / 2;
             targetYRef.current = bot;
             stateRef.current = "fetch_run";
@@ -301,9 +305,11 @@ export function BeaglePet() {
         }
       }
 
-      // === STATE MACHINE ===
+      // === STATE MACHINE (always read stateRef.current fresh, not a cached variable) ===
+      const state = stateRef.current;
+
       if (state === "drag") {
-        // Follow pointer directly, handled in pointer events
+        // Follow pointer directly — handled in pointer events
       } else if (state === "toss") {
         const result = updateToss(xRef.current, yRef.current, tossRef.current, dt);
         xRef.current = result.x;
@@ -321,13 +327,10 @@ export function BeaglePet() {
           setStateRef("idle");
         }
       } else if (state === "tumble") {
-        // Play roll animation then return to idle
-        const config = ANIM_CONFIG.tumble;
-        if (animElapsedRef.current >= config.duration) {
+        if (animElapsedRef.current >= ANIM_CONFIG.tumble.duration) {
           setStateRef("idle");
         }
       } else if (state === "fetch_run") {
-        // Sprint to ball
         if (fetchBallRef.current && fetchBallRef.current.phase === "landed") {
           const ballX = fetchBallRef.current.x - PET_WIDTH / 2;
           const result = move2D(xRef.current, yRef.current, ballX, bot, RUN_SPEED * 1.2, dt);
@@ -335,7 +338,6 @@ export function BeaglePet() {
           yRef.current = result.y;
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
           if (result.arrived) {
-            // Pick up ball
             fetchBallRef.current.phase = "fade";
             targetXRef.current = cursorXRef.current;
             targetYRef.current = bot;
@@ -355,28 +357,25 @@ export function BeaglePet() {
           setStateRef("idle");
         }
       } else if (state === "sniff") {
-        const config = ANIM_CONFIG.sniff;
-        if (animElapsedRef.current >= config.duration) {
+        if (animElapsedRef.current >= ANIM_CONFIG.sniff.duration) {
           bubblesRef.current.push(createBubble("👃", xRef.current + PET_WIDTH / 2, yRef.current));
           setStateRef("idle");
         }
       } else if (TRICK_STATES.has(state)) {
-        // Trick / jump in progress — wait for animation to finish
         const config = ANIM_CONFIG[state];
         if (!config.loop && animElapsedRef.current >= config.duration) {
           setStateRef("idle");
           lastCursorMoveRef.current = Date.now();
         }
       } else {
-        // IDLE / WALK / RUN / SIT / SLEEP — normal behavior
+        // === IDLE / WALK / RUN / SIT / SLEEP — normal behavior ===
 
-        // Clamp pace target
+        // Clamp pace target on resize
         if (paceTargetRef.current > maxX || paceTargetRef.current < 0) {
           paceTargetRef.current = pickPaceTarget();
         }
 
-        // --- Targeting ---
-        // Dog stays at bottom during normal behavior — only follow cursor X
+        // --- Targeting (Y always stays at bottom during normal behavior) ---
         if (cursorActive) {
           targetXRef.current = cursorXRef.current;
           targetYRef.current = bot;
@@ -394,7 +393,7 @@ export function BeaglePet() {
           targetYRef.current = bot;
         }
 
-        // X-axis distance for state transitions (dog stays at bottom)
+        // X-only distance for transitions (dog stays at bottom)
         const dist = Math.abs(targetXRef.current - xRef.current);
 
         // --- State transitions ---
@@ -429,7 +428,7 @@ export function BeaglePet() {
           }
         }
 
-        // --- Return to bottom when idle and off-bottom ---
+        // Return to bottom if idle and off-bottom for 3+ seconds
         if (state === "idle" && Math.abs(yRef.current - bot) > RETURN_TO_BOTTOM_MARGIN && !cursorActive) {
           const idleDur = (now - idleStartRef.current) / 1000;
           if (idleDur > 3) {
@@ -437,7 +436,7 @@ export function BeaglePet() {
           }
         }
 
-        // --- Sniff behavior (desktop only) ---
+        // Sniff behavior (desktop only, at bottom, idle 5+ seconds)
         if (!isMobile && state === "idle" && Math.abs(yRef.current - bot) < RETURN_TO_BOTTOM_MARGIN) {
           const idleDur = (now - idleStartRef.current) / 1000;
           if (shouldSniff(idleDur)) {
@@ -448,7 +447,6 @@ export function BeaglePet() {
               targetYRef.current = target.y;
               markSniffed();
               setStateRef("walk");
-              // Will transition to sniff when arrives
             }
           }
         }
@@ -462,10 +460,9 @@ export function BeaglePet() {
           yRef.current = Math.max(0, Math.min(bot, result.y));
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
 
-          // Running panting sound
           if (currentState === "run") playPanting();
 
-          // Check if arrived at sniff target
+          // Arrived at sniff target?
           if (sniffTargetRef.current && result.arrived) {
             sniffTargetRef.current = null;
             stateRef.current = "sniff";
@@ -487,28 +484,27 @@ export function BeaglePet() {
         frameIndex = Math.floor(progress * config.frames);
       }
 
-      const bgPosX = -(frameIndex * FRAME_STEP);
+      // Round to avoid sub-pixel jitter with image-rendering: pixelated
+      const bgPosX = Math.round(-(frameIndex * FRAME_STEP));
 
-      // === APPLY TO DOM ===
+      // === APPLY TO DOM (imperative — never set top/left in JSX) ===
       const sprite = config.sprite;
       if (currentSpriteRef.current !== sprite) {
         el.style.backgroundImage = `url(${sprite})`;
         currentSpriteRef.current = sprite;
       }
-      el.style.left = `${xRef.current}px`;
-      el.style.top = `${yRef.current}px`;
+      el.style.left = `${Math.round(xRef.current)}px`;
+      el.style.top = `${Math.round(yRef.current)}px`;
       el.style.backgroundPositionX = `${bgPosX}px`;
       el.style.transform = facingLeftRef.current ? "scaleX(-1)" : "none";
 
       // === EMOTION BUBBLES ===
       const curState = stateRef.current;
-      // Music notes while music plays and walking
       if (musicActive && (curState === "walk" || curState === "run") && Math.random() < 0.02) {
         bubblesRef.current.push(
           createBubble("🎵", xRef.current + PET_WIDTH / 2, yRef.current)
         );
       }
-      // Zzz while sleeping
       if (curState === "sleep" && Math.random() < 0.015) {
         bubblesRef.current.push(
           createBubble("💤", xRef.current + PET_WIDTH / 2, yRef.current)
@@ -541,18 +537,18 @@ export function BeaglePet() {
       }
 
       // Sunglasses in light mode
-      if (showSunglassesRef.current && curState !== "sleep" && curState !== "drag" && curState !== "toss") {
+      if (currentTheme === "light" && curState !== "sleep" && curState !== "drag" && curState !== "toss") {
         drawSunglasses(ctx, xRef.current, yRef.current, facingLeftRef.current);
       }
 
       rafRef.current = requestAnimationFrame(loop);
     };
 
-    // Init
+    // Set initial styles before first frame
     const initConfig = ANIM_CONFIG[stateRef.current];
     el.style.backgroundImage = `url(${initConfig.sprite})`;
-    el.style.left = `${xRef.current}px`;
-    el.style.top = `${yRef.current}px`;
+    el.style.left = `${Math.round(xRef.current)}px`;
+    el.style.top = `${Math.round(yRef.current)}px`;
     currentSpriteRef.current = initConfig.sprite;
     lastFrameRef.current = 0;
 
@@ -565,7 +561,6 @@ export function BeaglePet() {
     if (reducedMotion) return;
     e.preventDefault();
 
-    // Init sounds on first interaction
     if (!soundInitRef.current) {
       initSoundEffects();
       soundInitRef.current = true;
@@ -596,7 +591,6 @@ export function BeaglePet() {
       xRef.current = e.clientX - PET_WIDTH / 2;
       yRef.current = e.clientY - PET_HEIGHT / 2;
 
-      // Track history for toss velocity
       const hist = pointerHistoryRef.current;
       hist.push({ x: e.clientX, y: e.clientY, t: Date.now() });
       if (hist.length > POINTER_HISTORY_SIZE) hist.shift();
@@ -610,16 +604,15 @@ export function BeaglePet() {
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
 
     if (isDraggingRef.current) {
-      // Toss
       isDraggingRef.current = false;
       const hist = pointerHistoryRef.current;
       if (hist.length >= 2) {
         const first = hist[0];
         const last = hist[hist.length - 1];
-        const dt = Math.max((last.t - first.t) / 1000, 0.016);
+        const elapsed = Math.max((last.t - first.t) / 1000, 0.016);
         tossRef.current = {
-          vx: (last.x - first.x) / dt,
-          vy: (last.y - first.y) / dt,
+          vx: (last.x - first.x) / elapsed,
+          vy: (last.y - first.y) / elapsed,
         };
       } else {
         tossRef.current = { vx: 0, vy: 0 };
@@ -627,7 +620,7 @@ export function BeaglePet() {
       stateRef.current = "toss";
       animElapsedRef.current = 0;
     } else {
-      // Click — use debounce to distinguish from dblclick
+      // Click — debounce to distinguish from dblclick
       clearTimeout(clickTimerRef.current);
       clickTimerRef.current = window.setTimeout(() => {
         if (NON_INTERRUPT_STATES.has(stateRef.current)) return;
@@ -637,11 +630,9 @@ export function BeaglePet() {
         stateRef.current = trick;
         animElapsedRef.current = 0;
 
-        // Sound
         if (trick === "bark") playBark();
         else if (trick === "jump") playJump();
 
-        // Bubble
         if (trick === "jump" || trick === "backflip") {
           bubblesRef.current.push(
             createBubble("❤️", xRef.current + PET_WIDTH / 2, yRef.current)
@@ -683,12 +674,19 @@ export function BeaglePet() {
           position: "fixed",
           top: 0,
           left: 0,
-          width: "100%",
-          height: "100%",
+          width: "100vw",
+          height: "100vh",
           zIndex: 46,
           pointerEvents: "none",
         }}
       />
+      {/*
+        IMPORTANT: Do NOT set top/left in this style object.
+        Position is managed imperatively via el.style in the rAF loop.
+        If we set top:0/left:0 here, React would reset position on every
+        re-render (isPlaying/theme changes), causing the dog to flash
+        to the top-left corner for one frame.
+      */}
       <div
         ref={elRef}
         onPointerDown={onPointerDown}
@@ -696,8 +694,6 @@ export function BeaglePet() {
         onPointerUp={onPointerUp}
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
           zIndex: 47,
           width: PET_WIDTH,
           height: PET_HEIGHT,
@@ -722,7 +718,6 @@ function drawSunglasses(
 ): void {
   ctx.save();
 
-  // Position relative to dog sprite — roughly at the face
   const faceOffsetX = facingLeft ? PET_WIDTH * 0.3 : PET_WIDTH * 0.55;
   const faceOffsetY = PET_HEIGHT * 0.3;
   const cx = dogX + faceOffsetX;
