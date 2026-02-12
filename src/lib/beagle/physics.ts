@@ -2,7 +2,7 @@ import { PET_WIDTH, PET_HEIGHT, WALK_SPEED } from "./sprites";
 
 const GRAVITY = 1200;
 const BOUNCE_DAMPING = 0.7;
-const FRICTION = 0.98;
+const FRICTION_PER_SECOND = 0.3;
 const SETTLE_THRESHOLD = 20;
 
 export interface TossState {
@@ -52,7 +52,7 @@ export function updateToss(
   let { vx, vy } = toss;
 
   vy += GRAVITY * dt;
-  vx *= FRICTION;
+  vx *= Math.pow(FRICTION_PER_SECOND, dt);
 
   let nx = x + vx * dt;
   let ny = y + vy * dt;
@@ -74,8 +74,9 @@ export function updateToss(
   if (ny > maxY) {
     ny = maxY;
     vy = -vy * BOUNCE_DAMPING;
-    if (Math.abs(vy) < SETTLE_THRESHOLD) {
+    if (Math.abs(vy) < SETTLE_THRESHOLD && Math.abs(vx) < SETTLE_THRESHOLD) {
       vy = 0;
+      vx = 0;
       settled = true;
     }
   }

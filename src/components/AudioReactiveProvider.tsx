@@ -56,6 +56,8 @@ export function AudioReactiveProvider({
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const rafRef = useRef<number>(0);
   const reducedMotionRef = useRef(false);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const byteDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   useEffect(() => {
     reducedMotionRef.current = window.matchMedia(
@@ -111,22 +113,21 @@ export function AudioReactiveProvider({
     gain.connect(audioCtx.destination);
 
     frequencyData.current = new Float32Array(analyser.frequencyBinCount);
+    byteDataRef.current = new Uint8Array(analyser.frequencyBinCount);
   }, []);
 
   const updateBands = useCallback(() => {
     const analyser = analyserRef.current;
     const data = frequencyData.current;
-    if (!analyser || !data) return;
-
-    // Use byte data for 0-255 range
-    const byteData = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(byteData);
+    const byteData = byteDataRef.current;
+    if (!analyser || !data || !byteData) return;
 
     if (reducedMotionRef.current) {
       bands.current = { ...DEFAULT_BANDS };
-      rafRef.current = requestAnimationFrame(updateBands);
-      return;
+      return; // stop the loop entirely in reduced motion
     }
+
+    analyser.getByteFrequencyData(byteData);
 
     // Bass: bins 1-5
     let bassSum = 0;
@@ -172,25 +173,26 @@ export function AudioReactiveProvider({
     }
 
     if (audio.paused) {
-      audio.play().then(() => {
-        setIsPlaying(true);
-        try {
-          sessionStorage.setItem("audio-playing", "true");
-        } catch {
-          // ignore
+      if (playPromiseRef.current) return; // guard against rapid double-toggle
+      const promise = audio.play();
+      playPromiseRef.current = promise;
+      promise.then(() => {
+        playPromiseRef.current = null;
+        if (!audio.paused) {
+          setIsPlaying(true);
+          try { sessionStorage.setItem("audio-playing", "true"); } catch {}
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = requestAnimationFrame(updateBands);
         }
-        rafRef.current = requestAnimationFrame(updateBands);
+      }).catch(() => {
+        playPromiseRef.current = null;
       });
     } else {
       audio.pause();
+      playPromiseRef.current = null;
       setIsPlaying(false);
-      try {
-        sessionStorage.setItem("audio-playing", "false");
-      } catch {
-        // ignore
-      }
+      try { sessionStorage.setItem("audio-playing", "false"); } catch {}
       cancelAnimationFrame(rafRef.current);
-      // Fade bands to zero
       bands.current = { ...DEFAULT_BANDS };
     }
   }, [initAudio, updateBands]);

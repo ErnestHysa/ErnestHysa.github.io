@@ -18,6 +18,7 @@ export function GravityPlayground() {
   const activeRef = useRef(false);
   const rafRef = useRef<number>(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const innerTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const mouseHistoryRef = useRef<{ x: number; y: number; t: number }[]>([]);
 
   const trigger = useCallback(() => {
@@ -37,10 +38,11 @@ export function GravityPlayground() {
       return;
     }
 
-    const physics: CardPhysics[] = cards.map((el) => {
+    const physics: (CardPhysics & { origCssText: string })[] = cards.map((el) => {
       const rect = el.getBoundingClientRect();
       return {
         el,
+        origCssText: el.style.cssText,
         origTop: rect.top,
         origLeft: rect.left,
         origWidth: rect.width,
@@ -101,10 +103,10 @@ export function GravityPlayground() {
         s.transform = "none";
       }
 
-      // After transition, remove all inline styles
-      setTimeout(() => {
+      // After transition, restore original inline styles
+      innerTimeoutRef.current = setTimeout(() => {
         for (const p of physics) {
-          p.el.style.cssText = "";
+          p.el.style.cssText = p.origCssText;
         }
         activeRef.current = false;
       }, 850);
@@ -191,6 +193,7 @@ export function GravityPlayground() {
       window.removeEventListener("mousemove", onMouseMove);
       cancelAnimationFrame(rafRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (innerTimeoutRef.current) clearTimeout(innerTimeoutRef.current);
     };
   }, [trigger]);
 

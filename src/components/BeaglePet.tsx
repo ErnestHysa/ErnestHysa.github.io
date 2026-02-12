@@ -155,6 +155,7 @@ export function BeaglePet() {
     return () => {
       cancelAnimationFrame(rafRef.current);
       clearTimeout(clickTimerRef.current);
+      isWalkingSoundRef.current = false;
       soundRef.current.cleanup();
     };
   }, []);
@@ -168,6 +169,10 @@ export function BeaglePet() {
       idleStartRef.current = Date.now();
     }
     if (newState === "sleep" && prev !== "sleep") soundRef.current.whimper();
+    // Clear stale sniff target when walk is interrupted
+    if (prev === "walk" && newState !== "sniff") {
+      sniffTargetRef.current = null;
+    }
   }, []);
 
   // --- Cursor tracking ---
@@ -211,7 +216,7 @@ export function BeaglePet() {
     if (reducedMotion || !mounted) return;
 
     const onDblClick = (e: MouseEvent) => {
-      if (fetchBallRef.current) return;
+      if (fetchBallRef.current && fetchBallRef.current.phase !== "fade") return;
       if (NON_INTERRUPT_STATES.has(stateRef.current)) return;
 
       clearTimeout(clickTimerRef.current);
@@ -520,7 +525,7 @@ export function BeaglePet() {
         frameIndex = Math.floor(progress * config.frames) % config.frames;
       } else {
         const progress = Math.min(animElapsedRef.current / config.duration, 1 - 1e-6);
-        frameIndex = Math.floor(progress * config.frames);
+        frameIndex = Math.min(Math.floor(progress * config.frames), config.frames - 1);
       }
 
       // Round to avoid sub-pixel jitter with image-rendering: pixelated
@@ -651,7 +656,9 @@ export function BeaglePet() {
     if (!pointerDownRef.current) return;
     pointerDownRef.current = false;
 
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch { /* pointer already released */ }
 
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
@@ -689,6 +696,22 @@ export function BeaglePet() {
           );
         }
       }, 250);
+    }
+  }, []);
+
+  const onPointerCancel = useCallback((e: React.PointerEvent) => {
+    if (!pointerDownRef.current) return;
+    pointerDownRef.current = false;
+
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch { /* already released */ }
+
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      tossRef.current = { vx: 0, vy: 0 };
+      stateRef.current = "toss";
+      animElapsedRef.current = 0;
     }
   }, []);
 
@@ -741,6 +764,7 @@ export function BeaglePet() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         style={{
           position: "fixed",
           zIndex: 47,

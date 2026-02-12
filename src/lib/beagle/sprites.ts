@@ -2,7 +2,7 @@ import type { PetState, AnimConfig } from "./types";
 
 export const PET_HEIGHT = 64;
 export const PET_WIDTH = Math.round(PET_HEIGHT * (300 / 280));
-export const FRAME_STEP = PET_HEIGHT * (300 / 280);
+export const FRAME_STEP = PET_WIDTH;
 
 export const WALK_SPEED = 80;
 export const RUN_SPEED = 180;

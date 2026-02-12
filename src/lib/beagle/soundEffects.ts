@@ -3,6 +3,7 @@ let barkAudio: HTMLAudioElement | null = null;
 let barkBuffer: AudioBuffer | null = null;
 let walkAudio: HTMLAudioElement | null = null;
 let breatheAudio: HTMLAudioElement | null = null;
+let initGeneration = 0;
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {
@@ -20,6 +21,7 @@ function getCtx(): AudioContext | null {
 
 export function initSoundEffects(): void {
   const ctx = getCtx();
+  const gen = ++initGeneration;
 
   // Bark: HTMLAudioElement (primary) + Web Audio buffer (backup)
   if (!barkAudio) {
@@ -35,8 +37,14 @@ export function initSoundEffects(): void {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.arrayBuffer();
       })
-      .then(buf => ctx.decodeAudioData(buf))
-      .then(decoded => { barkBuffer = decoded; })
+      .then(buf => {
+        if (gen !== initGeneration) return; // stale closure guard
+        return ctx.decodeAudioData(buf);
+      })
+      .then(decoded => {
+        if (gen !== initGeneration || !decoded) return;
+        barkBuffer = decoded;
+      })
       .catch(() => {});
   }
 
@@ -83,6 +91,11 @@ function playTone(
   gain.connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + duration);
+
+  osc.onended = () => {
+    osc.disconnect();
+    gain.disconnect();
+  };
 }
 
 function playBarkViaWebAudio(): boolean {
@@ -95,6 +108,10 @@ function playBarkViaWebAudio(): boolean {
     source.connect(gain);
     gain.connect(ctx.destination);
     source.start();
+    source.onended = () => {
+      source.disconnect();
+      gain.disconnect();
+    };
     return true;
   }
   return false;
@@ -168,9 +185,17 @@ export function playWhimper(): void {
   osc.start();
   osc.stop(ctx.currentTime + 0.3);
   lfo.stop(ctx.currentTime + 0.3);
+
+  osc.onended = () => {
+    osc.disconnect();
+    gain.disconnect();
+    lfo.disconnect();
+    lfoGain.disconnect();
+  };
 }
 
 export function cleanupSoundEffects(): void {
+  initGeneration++;
   if (audioCtx) {
     audioCtx.close();
     audioCtx = null;
