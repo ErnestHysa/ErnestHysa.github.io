@@ -17,13 +17,10 @@ function getCtx(): AudioContext | null {
 
 export function initSoundEffects(): void {
   getCtx();
-  // Preload bark sample as an Audio element — simple, no async decode needed
   if (!barkAudio) {
     barkAudio = new Audio("/audio/bark.mp3");
-    barkAudio.preload = "auto";
     barkAudio.volume = 0.3;
-    // Force the browser to begin buffering
-    barkAudio.load();
+    barkAudio.preload = "auto";
   }
 }
 
@@ -55,13 +52,12 @@ function playTone(
 
 export function playBark(): void {
   if (barkAudio) {
-    // Clone so overlapping barks work, and play immediately
-    const clone = barkAudio.cloneNode() as HTMLAudioElement;
-    clone.volume = 0.3;
-    clone.play().catch(() => {});
+    barkAudio.currentTime = 0;
+    barkAudio.play().catch(() => {
+      playTone(600, 400, 0.12, "square", 0.015);
+    });
     return;
   }
-  // Fallback — should never reach here after init
   playTone(600, 400, 0.12, "square", 0.015);
 }
 
@@ -127,5 +123,9 @@ export function cleanupSoundEffects(): void {
     audioCtx.close();
     audioCtx = null;
   }
-  barkAudio = null;
+  if (barkAudio) {
+    barkAudio.pause();
+    barkAudio.src = "";
+    barkAudio = null;
+  }
 }

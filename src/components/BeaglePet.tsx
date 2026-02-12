@@ -298,7 +298,7 @@ export function BeaglePet() {
           // Transition: ball landed -> dog runs to it
           if (ball.phase === "landed" && stateRef.current !== "fetch_run" && stateRef.current !== "fetch_return") {
             targetXRef.current = ball.x - PET_WIDTH / 2;
-            targetYRef.current = bot;
+            targetYRef.current = ball.y - PET_HEIGHT / 2;
             stateRef.current = "fetch_run";
             animElapsedRef.current = 0;
           }
@@ -333,14 +333,15 @@ export function BeaglePet() {
       } else if (state === "fetch_run") {
         if (fetchBallRef.current && fetchBallRef.current.phase === "landed") {
           const ballX = fetchBallRef.current.x - PET_WIDTH / 2;
-          const result = move2D(xRef.current, yRef.current, ballX, bot, RUN_SPEED * 1.2, dt);
+          const ballY = fetchBallRef.current.y - PET_HEIGHT / 2;
+          const result = move2D(xRef.current, yRef.current, ballX, ballY, RUN_SPEED * 1.2, dt);
           xRef.current = result.x;
           yRef.current = result.y;
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
           if (result.arrived) {
             fetchBallRef.current.phase = "fade";
             targetXRef.current = cursorXRef.current;
-            targetYRef.current = bot;
+            targetYRef.current = cursorYRef.current;
             stateRef.current = "fetch_return";
             animElapsedRef.current = 0;
           }
@@ -348,7 +349,7 @@ export function BeaglePet() {
           setStateRef("idle");
         }
       } else if (state === "fetch_return") {
-        const result = move2D(xRef.current, yRef.current, cursorXRef.current, bot, WALK_SPEED * 1.2, dt);
+        const result = move2D(xRef.current, yRef.current, cursorXRef.current, cursorYRef.current, WALK_SPEED * 1.2, dt);
         xRef.current = result.x;
         yRef.current = result.y;
         if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
@@ -378,7 +379,7 @@ export function BeaglePet() {
         // --- Targeting (Y always stays at bottom during normal behavior) ---
         if (cursorActive) {
           targetXRef.current = cursorXRef.current;
-          targetYRef.current = bot;
+          targetYRef.current = cursorYRef.current;
         } else if (musicActive && (state === "idle" || state === "sit" || state === "sleep" || state === "walk")) {
           if (Math.abs(xRef.current - paceTargetRef.current) < CLOSE_THRESHOLD) {
             paceTargetRef.current = pickPaceTarget();
@@ -393,8 +394,10 @@ export function BeaglePet() {
           targetYRef.current = bot;
         }
 
-        // X-only distance for transitions (dog stays at bottom)
-        const dist = Math.abs(targetXRef.current - xRef.current);
+        // 2D distance for state transitions (dog moves freely across screen)
+        const dx2 = targetXRef.current - xRef.current;
+        const dy2 = targetYRef.current - yRef.current;
+        const dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
 
         // --- State transitions ---
         if (cursorActive) {
