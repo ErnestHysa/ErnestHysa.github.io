@@ -2,6 +2,7 @@ let audioCtx: AudioContext | null = null;
 let barkAudio: HTMLAudioElement | null = null;
 let barkBuffer: AudioBuffer | null = null;
 let walkAudio: HTMLAudioElement | null = null;
+let breatheAudio: HTMLAudioElement | null = null;
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {
@@ -42,10 +43,19 @@ export function initSoundEffects(): void {
   // Walk: looping HTMLAudioElement
   if (!walkAudio) {
     walkAudio = new Audio("/audio/walk.mp3");
-    walkAudio.volume = 0.15;
+    walkAudio.volume = 0.12;
     walkAudio.loop = true;
     walkAudio.preload = "auto";
     walkAudio.load();
+  }
+
+  // Breathe: looping HTMLAudioElement layered with walk
+  if (!breatheAudio) {
+    breatheAudio = new Audio("/audio/breathe.mp3");
+    breatheAudio.volume = 0.06;
+    breatheAudio.loop = true;
+    breatheAudio.preload = "auto";
+    breatheAudio.load();
   }
 }
 
@@ -105,6 +115,9 @@ export function startWalking(): void {
   if (walkAudio && walkAudio.paused) {
     walkAudio.play().catch(() => {});
   }
+  if (breatheAudio && breatheAudio.paused) {
+    breatheAudio.play().catch(() => {});
+  }
 }
 
 export function stopWalking(): void {
@@ -112,6 +125,16 @@ export function stopWalking(): void {
     walkAudio.pause();
     walkAudio.currentTime = 0;
   }
+  if (breatheAudio && !breatheAudio.paused) {
+    breatheAudio.pause();
+    breatheAudio.currentTime = 0;
+  }
+}
+
+/** Adjust volume blend: false = walk (paws louder, breathing subtle), true = run (breathing heavier) */
+export function setRunning(running: boolean): void {
+  if (walkAudio) walkAudio.volume = running ? 0.15 : 0.12;
+  if (breatheAudio) breatheAudio.volume = running ? 0.14 : 0.06;
 }
 
 export function playJump(): void {
@@ -161,6 +184,11 @@ export function cleanupSoundEffects(): void {
     walkAudio.pause();
     walkAudio.src = "";
     walkAudio = null;
+  }
+  if (breatheAudio) {
+    breatheAudio.pause();
+    breatheAudio.src = "";
+    breatheAudio = null;
   }
   barkBuffer = null;
 }
