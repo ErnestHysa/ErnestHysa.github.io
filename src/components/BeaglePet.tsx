@@ -96,6 +96,9 @@ export function BeaglePet() {
   // Sniff
   const sniffTargetRef = useRef<{ x: number; y: number } | null>(null);
 
+  // Preloaded sprite images (kept alive to prevent GC / cache eviction)
+  const preloadedRef = useRef<HTMLImageElement[]>([]);
+
   // Click debounce (distinguish click from dblclick)
   const clickTimerRef = useRef(0);
 
@@ -512,7 +515,7 @@ export function BeaglePet() {
       }
       el.style.left = `${Math.round(xRef.current)}px`;
       el.style.top = `${Math.round(yRef.current)}px`;
-      el.style.backgroundPositionX = `${bgPosX}px`;
+      el.style.backgroundPosition = `${bgPosX}px 0px`;
       el.style.transform = facingLeftRef.current ? "scaleX(-1)" : "none";
 
       // === EMOTION BUBBLES ===
@@ -561,12 +564,18 @@ export function BeaglePet() {
       rafRef.current = requestAnimationFrame(loop);
     };
 
-    // Preload all sprite images to prevent white flash on first state change
+    // Preload + decode all sprite images to prevent white flash on state change.
+    // decode() ensures the image is in the GPU rendering cache, not just HTTP cache.
+    // References are kept in preloadedRef to prevent garbage collection.
+    const imgs: HTMLImageElement[] = [];
     const spritesToPreload = new Set(Object.values(ANIM_CONFIG).map(c => c.sprite));
     spritesToPreload.forEach(src => {
       const img = new Image();
       img.src = src;
+      img.decode().catch(() => {});
+      imgs.push(img);
     });
+    preloadedRef.current = imgs;
 
     // Set initial styles before first frame (all dynamic props are imperative-only)
     const initConfig = ANIM_CONFIG[stateRef.current];
