@@ -14,6 +14,7 @@ import { PageEffects } from "@/components/PageEffects";
 import { GravityPlayground } from "@/components/GravityPlayground";
 import { MusicToggle } from "@/components/MusicToggle";
 import { AudioVignette } from "@/components/AudioVignette";
+import { BeaglePet } from "@/components/BeaglePet";
 
 interface ContributionDay {
   date: string;
@@ -44,6 +45,7 @@ export default async function Home() {
       <GravityPlayground />
       <MusicToggle />
       <AudioVignette />
+      <BeaglePet />
       <CustomCursor />
       <AuroraBackground />
       <ScrollProgress />

@@ -1,0 +1,194 @@
+let audioCtx: AudioContext | null = null;
+let barkAudio: HTMLAudioElement | null = null;
+let barkBuffer: AudioBuffer | null = null;
+let walkAudio: HTMLAudioElement | null = null;
+let breatheAudio: HTMLAudioElement | null = null;
+
+function getCtx(): AudioContext | null {
+  if (!audioCtx) {
+    try {
+      audioCtx = new AudioContext();
+    } catch {
+      return null;
+    }
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+export function initSoundEffects(): void {
+  const ctx = getCtx();
+
+  // Bark: HTMLAudioElement (primary) + Web Audio buffer (backup)
+  if (!barkAudio) {
+    barkAudio = new Audio("/audio/bark.mp3");
+    barkAudio.volume = 0.3;
+    barkAudio.preload = "auto";
+    barkAudio.load();
+  }
+
+  if (ctx && !barkBuffer) {
+    fetch("/audio/bark.mp3")
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { barkBuffer = decoded; })
+      .catch(() => {});
+  }
+
+  // Walk: looping HTMLAudioElement
+  if (!walkAudio) {
+    walkAudio = new Audio("/audio/walk.mp3");
+    walkAudio.volume = 0.03;
+    walkAudio.loop = true;
+    walkAudio.preload = "auto";
+    walkAudio.load();
+  }
+
+  // Breathe: looping HTMLAudioElement layered with walk
+  if (!breatheAudio) {
+    breatheAudio = new Audio("/audio/breathe.mp3");
+    breatheAudio.volume = 0.015;
+    breatheAudio.loop = true;
+    breatheAudio.preload = "auto";
+    breatheAudio.load();
+  }
+}
+
+function playTone(
+  frequency: number,
+  endFreq: number,
+  duration: number,
+  type: OscillatorType,
+  volume = 0.02,
+): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(endFreq, ctx.currentTime + duration);
+
+  gain.gain.setValueAtTime(volume, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + duration);
+}
+
+function playBarkViaWebAudio(): boolean {
+  const ctx = getCtx();
+  if (ctx && barkBuffer) {
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = barkBuffer;
+    gain.gain.value = 0.3;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    return true;
+  }
+  return false;
+}
+
+export function playBark(): void {
+  if (barkAudio && !barkAudio.error) {
+    barkAudio.currentTime = 0;
+    barkAudio.play().catch(() => {
+      playBarkViaWebAudio();
+    });
+    return;
+  }
+  playBarkViaWebAudio();
+}
+
+export function startWalking(): void {
+  if (walkAudio && walkAudio.paused) {
+    walkAudio.play().catch(() => {});
+  }
+  if (breatheAudio && breatheAudio.paused) {
+    breatheAudio.play().catch(() => {});
+  }
+}
+
+export function stopWalking(): void {
+  if (walkAudio && !walkAudio.paused) {
+    walkAudio.pause();
+    walkAudio.currentTime = 0;
+  }
+  if (breatheAudio && !breatheAudio.paused) {
+    breatheAudio.pause();
+    breatheAudio.currentTime = 0;
+  }
+}
+
+/** Adjust volume blend: false = walk (paws louder, breathing subtle), true = run (breathing heavier) */
+export function setRunning(running: boolean): void {
+  if (walkAudio) walkAudio.volume = running ? 0.0375 : 0.03;
+  if (breatheAudio) breatheAudio.volume = running ? 0.035 : 0.015;
+}
+
+export function playJump(): void {
+  playTone(200, 500, 0.15, "triangle", 0.02);
+}
+
+export function playWhimper(): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(800, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.3);
+
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.value = 8;
+  lfoGain.gain.value = 30;
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+  lfo.start();
+
+  gain.gain.setValueAtTime(0.015, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.3);
+  lfo.stop(ctx.currentTime + 0.3);
+}
+
+export function cleanupSoundEffects(): void {
+  if (audioCtx) {
+    audioCtx.close();
+    audioCtx = null;
+  }
+  if (barkAudio) {
+    barkAudio.pause();
+    barkAudio.src = "";
+    barkAudio = null;
+  }
+  if (walkAudio) {
+    walkAudio.pause();
+    walkAudio.src = "";
+    walkAudio = null;
+  }
+  if (breatheAudio) {
+    breatheAudio.pause();
+    breatheAudio.src = "";
+    breatheAudio = null;
+  }
+  barkBuffer = null;
+}
