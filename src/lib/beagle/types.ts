@@ -47,7 +47,7 @@ export interface FetchBall {
   vy: number;
   targetX: number;
   targetY: number;
-  phase: "arc" | "landed" | "fade";
+  phase: "arc" | "landed" | "carried" | "fade";
   alpha: number;
   peaked: boolean;
 }

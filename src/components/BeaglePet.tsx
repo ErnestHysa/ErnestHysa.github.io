@@ -339,7 +339,8 @@ export function BeaglePet() {
           yRef.current = result.y;
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
           if (result.arrived) {
-            fetchBallRef.current.phase = "fade";
+            // Dog picked up the ball — carry it in mouth
+            fetchBallRef.current.phase = "carried";
             targetXRef.current = cursorXRef.current;
             targetYRef.current = cursorYRef.current;
             stateRef.current = "fetch_return";
@@ -353,7 +354,21 @@ export function BeaglePet() {
         xRef.current = result.x;
         yRef.current = result.y;
         if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
+
+        // Move carried ball to dog's mouth position
+        if (fetchBallRef.current && fetchBallRef.current.phase === "carried") {
+          const mouthX = facingLeftRef.current
+            ? xRef.current - 3
+            : xRef.current + PET_WIDTH + 3;
+          fetchBallRef.current.x = mouthX;
+          fetchBallRef.current.y = yRef.current + PET_HEIGHT * 0.4;
+        }
+
         if (result.arrived) {
+          // Drop the ball — switch to fade phase
+          if (fetchBallRef.current) {
+            fetchBallRef.current.phase = "fade";
+          }
           bubblesRef.current.push(createBubble("🐾", xRef.current + PET_WIDTH / 2, yRef.current));
           setStateRef("idle");
         }

@@ -1,5 +1,6 @@
 let audioCtx: AudioContext | null = null;
 let barkAudio: HTMLAudioElement | null = null;
+let barkBuffer: AudioBuffer | null = null;
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {
@@ -16,11 +17,36 @@ function getCtx(): AudioContext | null {
 }
 
 export function initSoundEffects(): void {
-  getCtx();
+  const ctx = getCtx();
+
+  // Method 1: HTMLAudioElement — simplest, works in most browsers
   if (!barkAudio) {
     barkAudio = new Audio("/audio/bark.mp3");
     barkAudio.volume = 0.3;
     barkAudio.preload = "auto";
+    barkAudio.load();
+    // Unlock: attempt silent play during user gesture
+    const origVol = barkAudio.volume;
+    barkAudio.volume = 0;
+    barkAudio.play().then(() => {
+      barkAudio!.pause();
+      barkAudio!.currentTime = 0;
+      barkAudio!.volume = origVol;
+    }).catch(() => {
+      barkAudio!.volume = origVol;
+    });
+  }
+
+  // Method 2: Web Audio API buffer — backup if HTMLAudioElement fails
+  if (ctx && !barkBuffer) {
+    fetch("/audio/bark.mp3")
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { barkBuffer = decoded; })
+      .catch(() => {});
   }
 }
 
@@ -50,15 +76,34 @@ function playTone(
   osc.stop(ctx.currentTime + duration);
 }
 
+function playBarkViaWebAudio(): boolean {
+  const ctx = getCtx();
+  if (ctx && barkBuffer) {
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = barkBuffer;
+    gain.gain.value = 0.3;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    return true;
+  }
+  return false;
+}
+
 export function playBark(): void {
+  // Try HTMLAudioElement first
   if (barkAudio) {
     barkAudio.currentTime = 0;
     barkAudio.play().catch(() => {
-      playTone(600, 400, 0.12, "square", 0.015);
+      // HTML Audio failed — try Web Audio buffer
+      playBarkViaWebAudio();
     });
     return;
   }
-  playTone(600, 400, 0.12, "square", 0.015);
+
+  // Try Web Audio buffer directly
+  playBarkViaWebAudio();
 }
 
 export function playJump(): void {
@@ -128,4 +173,5 @@ export function cleanupSoundEffects(): void {
     barkAudio.src = "";
     barkAudio = null;
   }
+  barkBuffer = null;
 }

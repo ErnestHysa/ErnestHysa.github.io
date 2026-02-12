@@ -66,6 +66,8 @@ export function updateBall(
       ball.vx = 0;
       ball.vy = 0;
     }
+  } else if (ball.phase === "carried") {
+    // Ball position is updated externally by the fetch_return handler
   } else if (ball.phase === "fade") {
     ball.alpha -= dt * 2;
     if (ball.alpha <= 0) return null;
