@@ -15,7 +15,7 @@ import {
   createBubble, updateBubbles, drawBubbles,
   shouldEmitPaw, createPawPrint, updatePawPrints, drawPawPrints,
 } from "../lib/beagle/particles";
-import { initSoundEffects, playBark, playJump, playWhimper, playPanting, cleanupSoundEffects } from "../lib/beagle/soundEffects";
+import { initSoundEffects, playBark, playJump, playWhimper, cleanupSoundEffects } from "../lib/beagle/soundEffects";
 import { createBall, updateBall, drawBall } from "../lib/beagle/fetchGame";
 import { shouldSniff, markSniffed, findNearbyElement } from "../lib/beagle/sniffBehavior";
 
@@ -100,8 +100,8 @@ export function BeaglePet() {
   const clickTimerRef = useRef(0);
 
   // Sound function refs — always point to latest imports (survives HMR)
-  const soundRef = useRef({ init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, panting: playPanting, cleanup: cleanupSoundEffects });
-  soundRef.current = { init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, panting: playPanting, cleanup: cleanupSoundEffects };
+  const soundRef = useRef({ init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, cleanup: cleanupSoundEffects });
+  soundRef.current = { init: initSoundEffects, bark: playBark, jump: playJump, whimper: playWhimper, cleanup: cleanupSoundEffects };
 
   // --- Sync external state into refs (no visual effect, just ref writes) ---
   useEffect(() => {
@@ -479,8 +479,6 @@ export function BeaglePet() {
           yRef.current = Math.max(0, Math.min(bot, result.y));
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
 
-          if (currentState === "run") soundRef.current.panting();
-
           // Arrived at sniff target?
           if (sniffTargetRef.current && result.arrived) {
             sniffTargetRef.current = null;
@@ -563,9 +561,17 @@ export function BeaglePet() {
       rafRef.current = requestAnimationFrame(loop);
     };
 
-    // Set initial styles before first frame
+    // Preload all sprite images to prevent white flash on first state change
+    const spritesToPreload = new Set(Object.values(ANIM_CONFIG).map(c => c.sprite));
+    spritesToPreload.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+
+    // Set initial styles before first frame (all dynamic props are imperative-only)
     const initConfig = ANIM_CONFIG[stateRef.current];
     el.style.backgroundImage = `url(${initConfig.sprite})`;
+    el.style.backgroundPosition = "0px 0px";
     el.style.left = `${Math.round(xRef.current)}px`;
     el.style.top = `${Math.round(yRef.current)}px`;
     currentSpriteRef.current = initConfig.sprite;
@@ -697,11 +703,10 @@ export function BeaglePet() {
         }}
       />
       {/*
-        IMPORTANT: Do NOT set top/left in this style object.
-        Position is managed imperatively via el.style in the rAF loop.
-        If we set top:0/left:0 here, React would reset position on every
-        re-render (isPlaying/theme changes), causing the dog to flash
-        to the top-left corner for one frame.
+        IMPORTANT: Do NOT set top, left, backgroundPosition, backgroundImage,
+        or transform in this style object. They are managed imperatively in
+        the rAF loop. React re-renders (isPlaying/theme context changes)
+        would reset them for one paint frame, causing visible flashes.
       */}
       <div
         ref={elRef}
@@ -715,7 +720,6 @@ export function BeaglePet() {
           height: PET_HEIGHT,
           backgroundSize: `auto ${PET_HEIGHT}px`,
           backgroundRepeat: "no-repeat",
-          backgroundPosition: "0 0",
           imageRendering: "pixelated",
           cursor: "pointer",
           touchAction: "none",
