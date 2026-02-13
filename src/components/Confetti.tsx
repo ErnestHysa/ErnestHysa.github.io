@@ -65,6 +65,7 @@ export function Confetti({ trigger }: { trigger: boolean }) {
 
     let raf: number;
     const startTime = performance.now();
+    let lastTime = startTime;
     const duration = 3000;
 
     const animate = (now: number) => {
@@ -74,14 +75,18 @@ export function Confetti({ trigger }: { trigger: boolean }) {
         return;
       }
 
+      // Normalize to 60fps (dt=1 at 60fps, dt=0.5 at 120fps, dt=2 at 30fps)
+      const dtFrame = Math.min((now - lastTime) / 16.67, 3);
+      lastTime = now;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       for (const p of particles) {
-        p.x += p.vx;
-        p.vy += 0.15; // gravity
-        p.y += p.vy;
-        p.vx *= 0.99; // friction
-        p.rotation += p.rotationSpeed;
+        p.x += p.vx * dtFrame;
+        p.vy += 0.15 * dtFrame; // gravity
+        p.y += p.vy * dtFrame;
+        p.vx *= Math.pow(0.99, dtFrame); // friction
+        p.rotation += p.rotationSpeed * dtFrame;
         p.alpha = Math.max(0, 1 - elapsed / duration);
 
         ctx.save();

@@ -20,6 +20,7 @@ export function GravityPlayground() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const innerTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const mouseHistoryRef = useRef<{ x: number; y: number; t: number }[]>([]);
+  const physicsRef = useRef<{ el: HTMLElement; origCssText: string }[]>([]);
 
   const trigger = useCallback(() => {
     if (activeRef.current) return;
@@ -53,6 +54,8 @@ export function GravityPlayground() {
         rotVel: (Math.random() - 0.5) * 200,
       };
     });
+
+    physicsRef.current = physics;
 
     // Freeze cards in place with fixed positioning
     for (const p of physics) {
@@ -194,6 +197,12 @@ export function GravityPlayground() {
       cancelAnimationFrame(rafRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (innerTimeoutRef.current) clearTimeout(innerTimeoutRef.current);
+      // Restore any cards stuck in fixed positioning from mid-animation unmount
+      for (const p of physicsRef.current) {
+        p.el.style.cssText = p.origCssText;
+      }
+      physicsRef.current = [];
+      activeRef.current = false;
     };
   }, [trigger]);
 

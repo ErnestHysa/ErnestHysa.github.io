@@ -5,11 +5,11 @@ const SNIFF_CHANCE = 0.1; // per second
 
 let lastSniffTime = 0;
 
-export function shouldSniff(idleDuration: number): boolean {
+export function shouldSniff(idleDuration: number, dt: number): boolean {
   const now = Date.now();
   if (now - lastSniffTime < SNIFF_COOLDOWN) return false;
   if (idleDuration < 5) return false;
-  return Math.random() < SNIFF_CHANCE;
+  return Math.random() < SNIFF_CHANCE * dt;
 }
 
 export function markSniffed(): void {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Download, Sun, Moon } from "lucide-react";
 import { NAV_LINKS } from "@/lib/constants";
@@ -10,10 +10,8 @@ import { useTheme } from "@/components/ThemeProvider";
 export function Navbar() {
   const [visible, setVisible] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const activeId = useScrollSpy(
-    NAV_LINKS.map((l) => l.href.replace("#", "")),
-    80
-  );
+  const sectionIds = useMemo(() => NAV_LINKS.map((l) => l.href.replace("#", "")), []);
+  const activeId = useScrollSpy(sectionIds, 80);
   const { theme, cinematicToggle } = useTheme();
 
   const handleThemeToggle = (e: React.MouseEvent<HTMLButtonElement>) => {

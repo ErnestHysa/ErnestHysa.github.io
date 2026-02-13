@@ -83,6 +83,7 @@ export function AuroraBackground() {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); // set initial colors based on current scroll position
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 

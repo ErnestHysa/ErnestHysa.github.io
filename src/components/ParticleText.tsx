@@ -148,8 +148,6 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
       }
     };
 
-    document.fonts.ready.then(init);
-
     // ResizeObserver — re-sample when container actually resizes
     let resizeTimer: ReturnType<typeof setTimeout>;
     const observer = new ResizeObserver(() => {
@@ -248,6 +246,7 @@ export function ParticleText({ text, className = "" }: ParticleTextProps) {
         });
       });
     } else {
+      document.fonts.ready.then(init);
       animFrameRef.current = requestAnimationFrame(draw);
     }
 

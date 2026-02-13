@@ -17,7 +17,7 @@ import {
 } from "../lib/beagle/particles";
 import { initSoundEffects, playBark, playJump, playWhimper, startWalking, stopWalking, setRunning, cleanupSoundEffects } from "../lib/beagle/soundEffects";
 import { createBall, updateBall, drawBall } from "../lib/beagle/fetchGame";
-import { shouldSniff, markSniffed, findNearbyElement } from "../lib/beagle/sniffBehavior";
+import { shouldSniff, markSniffed, findNearbyElement, resetSniffCooldown } from "../lib/beagle/sniffBehavior";
 
 // --- Trick / non-interruptible states ---
 const TRICK_STATES: Set<PetState> = new Set(["jump", "roll", "bark", "backflip", "tumble"]);
@@ -157,6 +157,7 @@ export function BeaglePet() {
       clearTimeout(clickTimerRef.current);
       isWalkingSoundRef.current = false;
       soundRef.current.cleanup();
+      resetSniffCooldown();
     };
   }, []);
 
@@ -199,6 +200,9 @@ export function BeaglePet() {
       if (dt > 0) {
         const vel = Math.abs(window.scrollY - lastScrollYRef.current) / dt;
         if (vel > 2000 && !NON_INTERRUPT_STATES.has(stateRef.current)) {
+          if (stateRef.current === "walk") {
+            sniffTargetRef.current = null;
+          }
           stateRef.current = "tumble";
           animElapsedRef.current = 0;
         }
@@ -290,7 +294,7 @@ export function BeaglePet() {
       const currentTheme = themeRef.current;
       if (prevThemeRef.current !== currentTheme) {
         prevThemeRef.current = currentTheme;
-        if (!TRICK_STATES.has(stateRef.current) && stateRef.current !== "drag" && stateRef.current !== "toss") {
+        if (!NON_INTERRUPT_STATES.has(stateRef.current)) {
           stateRef.current = "bark";
           animElapsedRef.current = 0;
           bubblesRef.current.push(
@@ -307,8 +311,8 @@ export function BeaglePet() {
           fetchBallRef.current = null;
         } else {
           fetchBallRef.current = ball;
-          // Transition: ball landed -> dog runs to it
-          if (ball.phase === "landed" && stateRef.current !== "fetch_run" && stateRef.current !== "fetch_return") {
+          // Transition: ball landed -> dog runs to it (wait for non-interruptible states to finish)
+          if (ball.phase === "landed" && stateRef.current !== "fetch_run" && stateRef.current !== "fetch_return" && !NON_INTERRUPT_STATES.has(stateRef.current)) {
             targetXRef.current = ball.x - PET_WIDTH / 2;
             targetYRef.current = ball.y - PET_HEIGHT / 2;
             stateRef.current = "fetch_run";
@@ -347,8 +351,8 @@ export function BeaglePet() {
           const ballX = fetchBallRef.current.x - PET_WIDTH / 2;
           const ballY = fetchBallRef.current.y - PET_HEIGHT / 2;
           const result = move2D(xRef.current, yRef.current, ballX, ballY, RUN_SPEED * 1.2, dt);
-          xRef.current = result.x;
-          yRef.current = result.y;
+          xRef.current = Math.max(0, Math.min(maxX, result.x));
+          yRef.current = Math.max(0, Math.min(bot, result.y));
           if (result.dirX !== 0) facingLeftRef.current = result.dirX < 0;
           if (result.arrived) {
             // Dog picked up the ball — carry it in mouth
@@ -469,7 +473,7 @@ export function BeaglePet() {
         // Sniff behavior (desktop only, at bottom, idle 5+ seconds)
         if (!isMobile && state === "idle" && Math.abs(yRef.current - bot) < RETURN_TO_BOTTOM_MARGIN) {
           const idleDur = (now - idleStartRef.current) / 1000;
-          if (shouldSniff(idleDur)) {
+          if (shouldSniff(idleDur, dt)) {
             const target = findNearbyElement(xRef.current);
             if (target) {
               sniffTargetRef.current = target;
@@ -747,8 +751,8 @@ export function BeaglePet() {
           position: "fixed",
           top: 0,
           left: 0,
-          width: "100vw",
-          height: "100vh",
+          width: "100%",
+          height: "100%",
           zIndex: 46,
           pointerEvents: "none",
         }}

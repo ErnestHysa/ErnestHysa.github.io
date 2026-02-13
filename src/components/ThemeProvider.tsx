@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 
 type Theme = "light" | "dark";
 
@@ -41,15 +41,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   }, []);
 
+  const transitionActiveRef = useRef(false);
+
   const cinematicToggle = useCallback(
     (buttonRect: DOMRect) => {
+      if (transitionActiveRef.current) return; // guard against rapid double-click
+
       const newTheme = theme === "dark" ? "light" : "dark";
       const newBg = newTheme === "dark" ? "#09090b" : "#fafafa";
 
       // Find the transition overlay and trigger animation
       const overlay = document.getElementById("theme-transition-overlay");
       if (overlay && (overlay as unknown as { __trigger?: (rect: DOMRect, bg: string) => void }).__trigger) {
+        transitionActiveRef.current = true;
         (overlay as unknown as { __trigger: (rect: DOMRect, bg: string) => void }).__trigger(buttonRect, newBg);
+        // Release after transition completes (~900ms)
+        setTimeout(() => { transitionActiveRef.current = false; }, 900);
       } else {
         // Fallback: instant toggle
         toggleTheme();

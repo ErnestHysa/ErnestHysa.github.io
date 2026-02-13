@@ -58,13 +58,20 @@ export function SkillOrbit() {
     });
   }, []);
 
+  // Keep theme in a ref so the rAF loop always reads the latest without re-running the effect
+  const isDarkRef = useRef(theme === "dark");
+  isDarkRef.current = theme === "dark";
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    particlesRef.current = initParticles();
+    // Only init particles on mount — not on theme change
+    if (particlesRef.current.length === 0) {
+      particlesRef.current = initParticles();
+    }
     let time = 0;
 
     const resize = () => {
@@ -73,7 +80,7 @@ export function SkillOrbit() {
       canvas.height = window.innerHeight * dpr;
       canvas.style.width = `${window.innerWidth}px`;
       canvas.style.height = `${window.innerHeight}px`;
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -88,15 +95,21 @@ export function SkillOrbit() {
     canvas.addEventListener("mousemove", handleMouse);
     canvas.addEventListener("mouseleave", handleMouseLeave);
 
-    const isDark = theme === "dark";
-    const textColor = isDark ? "rgba(241, 245, 249, 0.9)" : "rgba(15, 23, 42, 0.8)";
-    const pillBg = isDark ? "rgba(52, 211, 153, 0.1)" : "rgba(16, 185, 129, 0.07)";
-    const pillBorder = isDark ? "rgba(52, 211, 153, 0.22)" : "rgba(16, 185, 129, 0.18)";
-    const pillHoverBg = isDark ? "rgba(52, 211, 153, 0.22)" : "rgba(16, 185, 129, 0.15)";
-    const pillHoverBorder = isDark ? "rgba(52, 211, 153, 0.5)" : "rgba(16, 185, 129, 0.4)";
-    const lineColor = isDark ? "rgba(52, 211, 153, 0.07)" : "rgba(16, 185, 129, 0.06)";
-    const lineHoverColor = isDark ? "rgba(52, 211, 153, 0.15)" : "rgba(16, 185, 129, 0.12)";
-    const glowColor = isDark ? "rgba(52, 211, 153, 0.3)" : "rgba(16, 185, 129, 0.2)";
+    // Theme colors are computed per-frame from isDarkRef so they respond
+    // to theme changes without re-running the effect (which would reset particles).
+    function themeColors() {
+      const d = isDarkRef.current;
+      return {
+        textColor: d ? "rgba(241, 245, 249, 0.9)" : "rgba(15, 23, 42, 0.8)",
+        pillBg: d ? "rgba(52, 211, 153, 0.1)" : "rgba(16, 185, 129, 0.07)",
+        pillBorder: d ? "rgba(52, 211, 153, 0.22)" : "rgba(16, 185, 129, 0.18)",
+        pillHoverBg: d ? "rgba(52, 211, 153, 0.22)" : "rgba(16, 185, 129, 0.15)",
+        pillHoverBorder: d ? "rgba(52, 211, 153, 0.5)" : "rgba(16, 185, 129, 0.4)",
+        lineColor: d ? "rgba(52, 211, 153, 0.07)" : "rgba(16, 185, 129, 0.06)",
+        lineHoverColor: d ? "rgba(52, 211, 153, 0.15)" : "rgba(16, 185, 129, 0.12)",
+        glowColor: d ? "rgba(52, 211, 153, 0.3)" : "rgba(16, 185, 129, 0.2)",
+      };
+    }
 
     // Spring physics constants
     const SPRING_STIFFNESS = 0.04;
@@ -117,6 +130,8 @@ export function SkillOrbit() {
 
       const particles = particlesRef.current;
       const mouse = mouseRef.current;
+      const isDark = isDarkRef.current;
+      const { textColor, pillBg, pillBorder, pillHoverBg, pillHoverBorder, lineColor, lineHoverColor, glowColor } = themeColors();
 
       // Find which particle is closest to cursor
       let hoveredIndex = -1;
@@ -278,6 +293,7 @@ export function SkillOrbit() {
       const h = window.innerHeight;
       const cx = w / 2;
       const cy = h / 2;
+      const { textColor: tc, pillBg: pb, pillBorder: pbo, lineColor: lc } = themeColors();
 
       ctx.clearRect(0, 0, w, h);
 
@@ -293,7 +309,7 @@ export function SkillOrbit() {
           else ctx.lineTo(px, py);
         }
         ctx.closePath();
-        ctx.strokeStyle = lineColor;
+        ctx.strokeStyle = lc;
         ctx.lineWidth = 1.5;
         ctx.stroke();
       });
@@ -314,13 +330,13 @@ export function SkillOrbit() {
 
         ctx.beginPath();
         ctx.roundRect(pillX, pillY, pillW, pillH, cornerRadius);
-        ctx.fillStyle = pillBg;
+        ctx.fillStyle = pb;
         ctx.fill();
-        ctx.strokeStyle = pillBorder;
+        ctx.strokeStyle = pbo;
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = textColor;
+        ctx.fillStyle = tc;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(p.label, x, y);
@@ -335,7 +351,7 @@ export function SkillOrbit() {
       canvas.removeEventListener("mouseleave", handleMouseLeave);
       cancelAnimationFrame(animFrameRef.current);
     };
-  }, [theme, initParticles]);
+  }, [initParticles]);
 
   return (
     <canvas

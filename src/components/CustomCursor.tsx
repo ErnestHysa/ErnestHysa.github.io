@@ -145,15 +145,10 @@ export function CustomCursor() {
       // Draw sparks
       sparkCtx.clearRect(0, 0, sparkCanvas.width, sparkCanvas.height);
 
-      for (let i = sparks.length - 1; i >= 0; i--) {
+      for (let i = 0; i < sparks.length; i++) {
         const s = sparks[i];
         s.life += dt;
-        if (s.life >= s.maxLife) {
-          sparks.splice(i, 1);
-          if (sparkIndex > i) sparkIndex--;
-          if (sparkIndex >= sparks.length) sparkIndex = 0;
-          continue;
-        }
+        if (s.life >= s.maxLife) continue; // skip dead — ring buffer will overwrite
 
         s.x += s.vx;
         s.vy += 0.5 * dt; // slight gravity
