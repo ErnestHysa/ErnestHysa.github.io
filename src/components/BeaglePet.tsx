@@ -795,7 +795,7 @@ function drawSunglasses(
   ctx.save();
 
   const faceOffsetX = facingLeft ? PET_WIDTH * 0.3 : PET_WIDTH * 0.55;
-  const faceOffsetY = PET_HEIGHT * 0.3;
+  const faceOffsetY = PET_HEIGHT * 0.42;
   const cx = dogX + faceOffsetX;
   const cy = dogY + faceOffsetY;
 
